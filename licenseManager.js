@@ -66,8 +66,7 @@ class LicenseManager {
             console.log(`📅 Expiração: ${formatarDataHora(new Date(userData.expirationDate))}`);
             console.log(`💻 Dispositivos permitidos: ${userData.maxDevices}`);
             console.log(`🔄 Último acesso: ${userData.lastAccess ? formatarDataHora(new Date(userData.lastAccess)) : 'Nunca'}`);
-            console.log(`⚙️ Recursos: ${userData.allowedFeatures ? userData.allowedFeatures.join(', ') : 'Todos'}`);
-
+            console.log(`⚙️  Recursos: ${userData.allowedFeatures ? userData.allowedFeatures.join(', ') : 'Todos'}`);
             // 5. Salvar email na sessão se não existir
             if (!await this.getStoredEmail()) {
                 this.saveEmailToSession(email);
