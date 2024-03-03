@@ -1,217 +1,241 @@
 // Fix para axios em executáveis
 if (process.pkg) {
-    const path = require('path');
-    const axiosPath = path.join(path.dirname(process.execPath), 'node_modules', 'axios');
-    try {
-        require(axiosPath);
-    } catch (e) {
-        // Ignore se não encontrar
-    }
+  const path = require("path");
+  const axiosPath = path.join(
+    path.dirname(process.execPath),
+    "node_modules",
+    "axios"
+  );
+  try {
+    require(axiosPath);
+  } catch (e) {
+    // Ignore se não encontrar
+  }
 }
 
 // Solução definitiva para executáveis Windows
-if (process.pkg && process.platform === 'win32') {
-    // Impedir que o console feche em erros não tratados
-    process.on('uncaughtException', (err) => {
-        console.error('Erro não tratado:', err);
-        console.log('\nPressione ENTER para sair...');
-        require('readline').createInterface({
-            input: process.stdin,
-            output: process.stdout
-        }).question('', () => process.exit(1));
-    });
+if (process.pkg && process.platform === "win32") {
+  // Impedir que o console feche em erros não tratados
+  process.on("uncaughtException", (err) => {
+    console.error("Erro não tratado:", err);
+    console.log("\nPressione ENTER para sair...");
+    require("readline")
+      .createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      })
+      .question("", () => process.exit(1));
+  });
 
-    // Manter o processo ativo
-    const keepAlive = setInterval(() => { }, 1000);
-    process.on('exit', () => clearInterval(keepAlive));
+  // Manter o processo ativo
+  const keepAlive = setInterval(() => {}, 1000);
+  process.on("exit", () => clearInterval(keepAlive));
 }
 
-const path = require('path');
-const whatsapp = require('whatsapp-web.js');
-const qrcode = require('qrcode');
-const fs = require('fs');
-const { exec } = require('child_process');
-const axios = require('axios');
-const readline = require('readline');
-const https = require('https');
-const crypto = require('crypto');
-const dgram = require('dgram');
-
+const path = require("path");
+const whatsapp = require("whatsapp-web.js");
+const qrcode = require("qrcode");
+const fs = require("fs");
+const { exec } = require("child_process");
+const axios = require("axios");
+const readline = require("readline");
+const https = require("https");
+const crypto = require("crypto");
+const dgram = require("dgram");
 
 let tentativasAxios = 0;
 const MAX_TENTATIVAS_AXIOS = 0;
 
 axios.interceptors.response.use(
-    response => response,
-    async error => {
-        // Apenas rejeita imediatamente erros de conexão
-        return Promise.reject(error);
-    }
+  (response) => response,
+  async (error) => {
+    // Apenas rejeita imediatamente erros de conexão
+    return Promise.reject(error);
+  }
 );
 
-
 // E o tratamento global de erros para:
-process.on('uncaughtException', (err) => {
-    console.error('❌ Erro não tratado:', err.message);
-    registrarErroDetalhado(err, 'Erro não tratado');
-    if (!process.pkg) {
-        process.exit(1);
-    }
+process.on("uncaughtException", (err) => {
+  console.error("❌ Erro não tratado:", err.message);
+  registrarErroDetalhado(err, "Erro não tratado");
+  if (!process.pkg) {
+    process.exit(1);
+  }
 });
 
-process.on('unhandledRejection', (err) => {
-    console.error('❌ Promise rejeitada:', err.message);
-    registrarErroDetalhado(err, 'Promise rejeitada');
-    if (!process.pkg) {
-        process.exit(1);
-    }
+process.on("unhandledRejection", (err) => {
+  console.error("❌ Promise rejeitada:", err.message);
+  registrarErroDetalhado(err, "Promise rejeitada");
+  if (!process.pkg) {
+    process.exit(1);
+  }
 });
 
 // ==================== Configuração especial para executáveis ====================
 if (process.pkg) {
+  // Garantir que os diretórios necessários existam
+  const appDir = path.dirname(process.execPath);
+  [
+    path.join(appDir, "logs"),
+    path.join(appDir, "config"),
+    path.join(appDir, "temp"),
+  ].forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  });
+
+  // ==================== Redirecionar stdout e stderr para arquivos quando em executável ====================
+  if (process.pkg) {
     // Garantir que os diretórios necessários existam
     const appDir = path.dirname(process.execPath);
-    [path.join(appDir, 'logs'), path.join(appDir, 'config'), path.join(appDir, 'temp')].forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
+    [
+      path.join(appDir, "logs"),
+      path.join(appDir, "config"),
+      path.join(appDir, "temp"),
+    ].forEach((dir) => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     });
 
-    // ==================== Redirecionar stdout e stderr para arquivos quando em executável ====================
-    if (process.pkg) {
-        // Garantir que os diretórios necessários existam
-        const appDir = path.dirname(process.execPath);
-        [path.join(appDir, 'logs'), path.join(appDir, 'config'), path.join(appDir, 'temp')].forEach(dir => {
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-        });
+    // Configuração mais robusta para redirecionamento de logs
+    const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+    const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
-        // Configuração mais robusta para redirecionamento de logs
-        const originalStdoutWrite = process.stdout.write.bind(process.stdout);
-        const originalStderrWrite = process.stderr.write.bind(process.stderr);
+    const stdoutLog = fs.createWriteStream(
+      path.join(appDir, "logs", "stdout.log"),
+      { flags: "a" }
+    );
+    const stderrLog = fs.createWriteStream(
+      path.join(appDir, "logs", "stderr.log"),
+      { flags: "a" }
+    );
 
-        const stdoutLog = fs.createWriteStream(path.join(appDir, 'logs', 'stdout.log'), { flags: 'a' });
-        const stderrLog = fs.createWriteStream(path.join(appDir, 'logs', 'stderr.log'), { flags: 'a' });
-
-        process.stdout.write = (chunk, encoding, callback) => {
-            try {
-                stdoutLog.write(chunk, encoding);
-                originalStdoutWrite(chunk, encoding, callback);
-            } catch (e) {
-                if (e.code !== 'ENOTCONN') {
-                    originalStderrWrite(`Erro ao escrever stdout: ${e.message}\n`, 'utf8');
-                }
-            }
-        };
-
-        process.stderr.write = (chunk, encoding, callback) => {
-            try {
-                stderrLog.write(chunk, encoding);
-                originalStderrWrite(chunk, encoding, callback);
-            } catch (e) {
-                if (e.code !== 'ENOTCONN') {
-                    originalStderrWrite(`Erro ao escrever stderr: ${e.message}\n`, 'utf8');
-                }
-            }
-        };
-
-        // Tratamento para evitar ENOTCONN no stdin
-        if (process.stdin.isTTY) {
-            process.stdin.on('error', (err) => {
-                if (err.code !== 'ENOTCONN') {
-                    console.error('Erro no stdin:', err);
-                }
-            });
+    process.stdout.write = (chunk, encoding, callback) => {
+      try {
+        stdoutLog.write(chunk, encoding);
+        originalStdoutWrite(chunk, encoding, callback);
+      } catch (e) {
+        if (e.code !== "ENOTCONN") {
+          originalStderrWrite(
+            `Erro ao escrever stdout: ${e.message}\n`,
+            "utf8"
+          );
         }
-    }
+      }
+    };
 
-    // Também manter saída no console
-    process.stdout.pipe(process.__stdout || process.stdout);
-    process.stderr.pipe(process.__stderr || process.stderr);
+    process.stderr.write = (chunk, encoding, callback) => {
+      try {
+        stderrLog.write(chunk, encoding);
+        originalStderrWrite(chunk, encoding, callback);
+      } catch (e) {
+        if (e.code !== "ENOTCONN") {
+          originalStderrWrite(
+            `Erro ao escrever stderr: ${e.message}\n`,
+            "utf8"
+          );
+        }
+      }
+    };
+
+    // Tratamento para evitar ENOTCONN no stdin
+    if (process.stdin.isTTY) {
+      process.stdin.on("error", (err) => {
+        if (err.code !== "ENOTCONN") {
+          console.error("Erro no stdin:", err);
+        }
+      });
+    }
+  }
+
+  // Também manter saída no console
+  process.stdout.pipe(process.__stdout || process.stdout);
+  process.stderr.pipe(process.__stderr || process.stderr);
 }
 
 // Função para aguardar entrada do usuário antes de sair
 function aguardarTeclaParaSair(mensagemErro = null) {
-    return new Promise((resolve) => {
-        if (mensagemErro) {
-            console.error(mensagemErro);
+  return new Promise((resolve) => {
+    if (mensagemErro) {
+      console.error(mensagemErro);
+    }
+
+    console.log("\n❗ Pressione ENTER para sair...");
+
+    const handleExit = () => {
+      try {
+        process.exit(0);
+      } catch (e) {
+        // Se falhar, força saída
+        if (typeof process.exit === "function") {
+          process.exit(0);
         }
+      }
+    };
 
-        console.log('\n❗ Pressione ENTER para sair...');
+    // Configuração específica para executáveis Windows
+    if (process.pkg && process.platform === "win32") {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
 
-        const handleExit = () => {
-            try {
-                process.exit(0);
-            } catch (e) {
-                // Se falhar, força saída
-                if (typeof process.exit === 'function') {
-                    process.exit(0);
-                }
-            }
-        };
+      rl.question("", () => {
+        rl.close();
+        handleExit();
+      });
 
-        // Configuração específica para executáveis Windows
-        if (process.pkg && process.platform === 'win32') {
-            const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-
-            rl.question('', () => {
-                rl.close();
-                handleExit();
-            });
-
-            // Tratamento de erro para stdin
-            process.stdin.on('error', (err) => {
-                if (err.code !== 'ENOTCONN') {
-                    console.error('Erro no stdin:', err);
-                }
-                handleExit();
-            });
-
-            // Forçar o stdin a ficar ativo
-            try {
-                process.stdin.resume();
-            } catch (e) {
-                // Ignorar erro ENOTCONN
-                if (e.code !== 'ENOTCONN') {
-                    console.error('Erro ao resumir stdin:', e);
-                }
-            }
+      // Tratamento de erro para stdin
+      process.stdin.on("error", (err) => {
+        if (err.code !== "ENOTCONN") {
+          console.error("Erro no stdin:", err);
         }
-        // Configuração para outros ambientes
-        else {
-            if (process.stdin.isTTY) {
-                try {
-                    process.stdin.setRawMode(true);
-                } catch (e) {
-                    // Ignorar erro se não for possível
-                }
-            }
-            try {
-                process.stdin.resume();
-                process.stdin.on('data', handleExit);
-            } catch (e) {
-                // Ignorar erro ENOTCONN
-                if (e.code !== 'ENOTCONN') {
-                    console.error('Erro no stdin:', e);
-                }
-                handleExit();
-            }
-        }
+        handleExit();
+      });
 
-        // Timeout de segurança
-        // setTimeout(handleExit, 250000);
-    });
+      // Forçar o stdin a ficar ativo
+      try {
+        process.stdin.resume();
+      } catch (e) {
+        // Ignorar erro ENOTCONN
+        if (e.code !== "ENOTCONN") {
+          console.error("Erro ao resumir stdin:", e);
+        }
+      }
+    }
+    // Configuração para outros ambientes
+    else {
+      if (process.stdin.isTTY) {
+        try {
+          process.stdin.setRawMode(true);
+        } catch (e) {
+          // Ignorar erro se não for possível
+        }
+      }
+      try {
+        process.stdin.resume();
+        process.stdin.on("data", handleExit);
+      } catch (e) {
+        // Ignorar erro ENOTCONN
+        if (e.code !== "ENOTCONN") {
+          console.error("Erro no stdin:", e);
+        }
+        handleExit();
+      }
+    }
+
+    // Timeout de segurança
+    // setTimeout(handleExit, 250000);
+  });
 }
 
 // ==================== Função para registrar erros detalhados ====================
-function registrarErroDetalhado(error, contexto = 'Erro não especificado') {
-    try {
-        const dataHoraErro = new Date().toISOString();
-        const mensagemErro = `
+function registrarErroDetalhado(error, contexto = "Erro não especificado") {
+  try {
+    const dataHoraErro = new Date().toISOString();
+    const mensagemErro = `
 ===== REGISTRO DE ERRO =====
 Data e Hora: ${dataHoraErro}
 Contexto: ${contexto}
@@ -221,513 +245,560 @@ ${error.stack}
 ===========================
 `;
 
-        // Caminho alternativo para executáveis
-        const logDir = process.pkg
-            ? path.join(path.dirname(process.execPath), 'logs')
-            : path.join(__dirname, 'logs');
+    // Caminho alternativo para executáveis
+    const logDir = process.pkg
+      ? path.join(path.dirname(process.execPath), "logs")
+      : path.join(__dirname, "logs");
 
-        // Garantir que o diretório de logs exista
-        if (!fs.existsSync(logDir)) {
-            fs.mkdirSync(logDir, { recursive: true });
-        }
-
-        // Nome do arquivo de log
-        const logFileName = `error_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
-        const logPath = path.join(logDir, logFileName);
-
-        // Escrever no arquivo de log
-        fs.writeFileSync(logPath, mensagemErro, 'utf8');
-
-        // Também escrever no console para garantir visibilidade
-        console.error(mensagemErro);
-
-        return logPath;
-    } catch (err) {
-        // Fallback: Se tudo falhar, pelo menos mostrar no console
-        console.error('Falha ao registrar erro:', err);
-        console.error('Erro original:', error);
-        return null;
+    // Garantir que o diretório de logs exista
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
     }
+
+    // Nome do arquivo de log
+    const logFileName = `error_${new Date()
+      .toISOString()
+      .replace(/[:.]/g, "-")}.txt`;
+    const logPath = path.join(logDir, logFileName);
+
+    // Escrever no arquivo de log
+    fs.writeFileSync(logPath, mensagemErro, "utf8");
+
+    // Também escrever no console para garantir visibilidade
+    console.error(mensagemErro);
+
+    return logPath;
+  } catch (err) {
+    // Fallback: Se tudo falhar, pelo menos mostrar no console
+    console.error("Falha ao registrar erro:", err);
+    console.error("Erro original:", error);
+    return null;
+  }
 }
 
 // ================= CONFIGURAÇÕES GERAIS =================
-const SUBSCRIPTION_END_DATE = new Date('2026-08-03');
+const SUBSCRIPTION_END_DATE = new Date("2026-08-03");
 const SUBSCRIPTION_DURATION_DAYS = 365;
 const SUBSCRIPTION_WARNING_DAYS = 30;
 
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
-    rejectUnauthorized: false,
-    rejectUnauthorized: false,
-    timeout: 10000 // 10 segundos de timeout
-
+  rejectUnauthorized: false,
+  rejectUnauthorized: false,
+  timeout: 10000, // 10 segundos de timeout
 });
 
 // Estrutura de diretórios
 const execDir = process.pkg ? path.dirname(process.execPath) : __dirname;
-const logsDir = path.join(execDir, 'logs');
-const configDir = path.join(execDir, 'config');
-const tempDir = path.join(execDir, 'temp');
-const sessionDir = path.join(execDir, '.wwebjs_auth', 'session');
-const securityDir = path.join(sessionDir, 'security');
+const logsDir = path.join(execDir, "logs");
+const configDir = path.join(execDir, "config");
+const tempDir = path.join(execDir, "temp");
+const sessionDir = path.join(execDir, ".wwebjs_auth", "session");
+const securityDir = path.join(sessionDir, "security");
 
 // Função para formatar data no formato DD-MM-YYYY-HH:MM:SS para nome de arquivo
 function formatarNomeArquivoData(date) {
-    const dia = String(date.getDate()).padStart(2, '0');
-    const mes = String(date.getMonth() + 1).padStart(2, '0');
-    const ano = date.getFullYear();
-    const horas = String(date.getHours()).padStart(2, '0');
-    const minutos = String(date.getMinutes()).padStart(2, '0');
-    const segundos = String(date.getSeconds()).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, "0");
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const ano = date.getFullYear();
+  const horas = String(date.getHours()).padStart(2, "0");
+  const minutos = String(date.getMinutes()).padStart(2, "0");
+  const segundos = String(date.getSeconds()).padStart(2, "0");
 
-    return `${dia}-${mes}-${ano}_${horas}-${minutos}-${segundos}`;
+  return `${dia}-${mes}-${ano}_${horas}-${minutos}-${segundos}`;
 }
 
 // Caminhos para arquivos
-const numerosPath = path.join(configDir, 'numeros.txt');
-const mensagemPath = path.join(configDir, 'mensagem.txt');
-const logPath = path.join(logsDir, `log_${formatarNomeArquivoData(new Date())}.txt`);
-const qrCodePath = path.join(tempDir, 'qrcode.png');
-const timeDataPath = path.join(securityDir, 'time.dat');
-const usageDataPath = path.join(securityDir, 'usage.dat');
+const numerosPath = path.join(configDir, "numeros.txt");
+const mensagemPath = path.join(configDir, "mensagem.txt");
+const logPath = path.join(
+  logsDir,
+  `log_${formatarNomeArquivoData(new Date())}.txt`
+);
+const qrCodePath = path.join(tempDir, "qrcode.png");
+const timeDataPath = path.join(securityDir, "time.dat");
+const usageDataPath = path.join(securityDir, "usage.dat");
 
 // =========================== FUNÇÕES AUXILIARES ===========================
 function formatarDataHora(date) {
-    const dia = String(date.getDate()).padStart(2, '0');
-    const mes = String(date.getMonth() + 1).padStart(2, '0');
-    const ano = date.getFullYear();
-    const horas = String(date.getHours()).padStart(2, '0');
-    const minutos = String(date.getMinutes()).padStart(2, '0');
-    const segundos = String(date.getSeconds()).padStart(2, '0');
+  const dia = String(date.getDate()).padStart(2, "0");
+  const mes = String(date.getMonth() + 1).padStart(2, "0");
+  const ano = date.getFullYear();
+  const horas = String(date.getHours()).padStart(2, "0");
+  const minutos = String(date.getMinutes()).padStart(2, "0");
+  const segundos = String(date.getSeconds()).padStart(2, "0");
 
-    return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
+  return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
 }
 
 function formatarListaNumeros(numeros) {
-    if (numeros.length === 0) return "Nenhum número com falha";
+  if (numeros.length === 0) return "Nenhum número com falha";
 
-    // Agrupa em linhas de 5 números para melhor visualização
-    let resultado = '';
-    for (let i = 0; i < numeros.length; i += 5) {
-        resultado += numeros.slice(i, i + 5).join(', ') + '\n';
-    }
-    return resultado;
+  // Agrupa em linhas de 5 números para melhor visualização
+  let resultado = "";
+  for (let i = 0; i < numeros.length; i += 5) {
+    resultado += numeros.slice(i, i + 5).join(", ") + "\n";
+  }
+  return resultado;
 }
 
 // =========================== SISTEMA DE SEGURANÇA TEMPORAL =================
 class TimeSecurity {
-    constructor() {
-        this.lastKnownDate = null;
+  constructor() {
+    this.lastKnownDate = null;
+  }
+
+  generateMachineHash() {
+    const machineId =
+      process.env.COMPUTERNAME ||
+      process.env.HOSTNAME ||
+      crypto.randomBytes(16).toString("hex");
+    return crypto.createHash("sha256").update(machineId).digest();
+  }
+
+  async ensureSecurityDirectory() {
+    if (!fs.existsSync(sessionDir)) {
+      fs.mkdirSync(sessionDir, { recursive: true });
+      console.log(`📁 Diretório de sessão criado: ${sessionDir}`);
     }
-
-    generateMachineHash() {
-        const machineId = process.env.COMPUTERNAME ||
-            process.env.HOSTNAME ||
-            crypto.randomBytes(16).toString('hex');
-        return crypto.createHash('sha256').update(machineId).digest();
+    if (!fs.existsSync(securityDir)) {
+      fs.mkdirSync(securityDir, { recursive: true });
+      console.log(`🔒 Diretório de segurança criado: ${securityDir}`);
     }
+  }
 
-    async ensureSecurityDirectory() {
-        if (!fs.existsSync(sessionDir)) {
-            fs.mkdirSync(sessionDir, { recursive: true });
-            console.log(`📁 Diretório de sessão criado: ${sessionDir}`);
-        }
-        if (!fs.existsSync(securityDir)) {
-            fs.mkdirSync(securityDir, { recursive: true });
-            console.log(`🔒 Diretório de segurança criado: ${securityDir}`);
-        }
+  async saveTimeCheckpoint() {
+    try {
+      await this.ensureSecurityDirectory();
+
+      const timeData = {
+        timestamp: Date.now(),
+        systemTime: new Date().getTime(),
+        envHash: this.createEnvironmentHash(),
+      };
+
+      const cipher = crypto.createCipheriv(
+        "aes-256-gcm",
+        this.generateMachineHash(),
+        Buffer.alloc(12)
+      );
+      let encrypted = cipher.update(JSON.stringify(timeData), "utf8", "hex");
+      encrypted += cipher.final("hex");
+
+      fs.writeFileSync(timeDataPath, encrypted);
+    } catch (error) {
+      registrarErroDetalhado(error, "Erro ao salvar checkpoint de tempo");
     }
+  }
 
-    async saveTimeCheckpoint() {
-        try {
-            await this.ensureSecurityDirectory();
+  createEnvironmentHash() {
+    return crypto
+      .createHash("sha256")
+      .update(process.env.PATH + JSON.stringify(process.versions) + execDir)
+      .digest("hex");
+  }
 
-            const timeData = {
-                timestamp: Date.now(),
-                systemTime: new Date().getTime(),
-                envHash: this.createEnvironmentHash()
-            };
+  async validateTimeIntegrity() {
+    try {
+      await this.ensureSecurityDirectory();
 
-            const cipher = crypto.createCipheriv('aes-256-gcm', this.generateMachineHash(), Buffer.alloc(12));
-            let encrypted = cipher.update(JSON.stringify(timeData), 'utf8', 'hex');
-            encrypted += cipher.final('hex');
+      if (!fs.existsSync(timeDataPath)) {
+        await this.saveTimeCheckpoint();
+        return true;
+      }
 
-            fs.writeFileSync(timeDataPath, encrypted);
-        } catch (error) {
-            registrarErroDetalhado(error, 'Erro ao salvar checkpoint de tempo');
-        }
+      const encrypted = fs.readFileSync(timeDataPath, "utf8");
+      const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        this.generateMachineHash(),
+        Buffer.alloc(12)
+      );
+      const decrypted =
+        decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
+      const timeData = JSON.parse(decrypted);
+
+      if (timeData.envHash !== this.createEnvironmentHash()) {
+        throw new Error("Environment mismatch");
+      }
+
+      const currentTime = Date.now();
+
+      if (currentTime < timeData.timestamp) {
+        throw new Error("System time reversed");
+      }
+
+      this.lastKnownDate = new Date(timeData.systemTime);
+      return true;
+    } catch (error) {
+      registrarErroDetalhado(
+        error,
+        "Erro na validação de integridade de tempo"
+      );
+      return false;
     }
+  }
 
-    createEnvironmentHash() {
-        return crypto.createHash('sha256')
-            .update(process.env.PATH + JSON.stringify(process.versions) + execDir)
-            .digest('hex');
+  async recordUsage() {
+    try {
+      await this.ensureSecurityDirectory();
+
+      const today = new Date().toISOString().split("T")[0];
+      let usageData = {};
+
+      if (fs.existsSync(usageDataPath)) {
+        usageData = JSON.parse(fs.readFileSync(usageDataPath, "utf8"));
+      }
+
+      usageData[today] = (usageData[today] || 0) + 1;
+      fs.writeFileSync(usageDataPath, JSON.stringify(usageData));
+    } catch (error) {
+      registrarErroDetalhado(error, "Erro ao registrar uso");
     }
+  }
 
-    async validateTimeIntegrity() {
-        try {
-            await this.ensureSecurityDirectory();
+  async checkForTampering() {
+    try {
+      await this.ensureSecurityDirectory();
 
-            if (!fs.existsSync(timeDataPath)) {
-                await this.saveTimeCheckpoint();
-                return true;
-            }
+      if (!fs.existsSync(timeDataPath)) {
+        await this.saveTimeCheckpoint();
+        return false;
+      }
 
-            const encrypted = fs.readFileSync(timeDataPath, 'utf8');
-            const decipher = crypto.createDecipheriv('aes-256-gcm', this.generateMachineHash(), Buffer.alloc(12));
-            const decrypted = decipher.update(encrypted, 'hex', 'utf8') + decipher.final('utf8');
-            const timeData = JSON.parse(decrypted);
+      const encrypted = fs.readFileSync(timeDataPath, "utf8");
+      const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        this.generateMachineHash(),
+        Buffer.alloc(12)
+      );
+      const decrypted =
+        decipher.update(encrypted, "hex", "utf8") + decipher.final("utf8");
+      const timeData = JSON.parse(decrypted);
 
-            if (timeData.envHash !== this.createEnvironmentHash()) {
-                throw new Error('Environment mismatch');
-            }
+      if (timeData.envHash !== this.createEnvironmentHash()) {
+        return true;
+      }
 
-            const currentTime = Date.now();
+      if (Date.now() < timeData.timestamp) {
+        return true;
+      }
 
-            if (currentTime < timeData.timestamp) {
-                throw new Error('System time reversed');
-            }
-
-            this.lastKnownDate = new Date(timeData.systemTime);
-            return true;
-        } catch (error) {
-            registrarErroDetalhado(error, 'Erro na validação de integridade de tempo');
-            return false;
-        }
+      return false;
+    } catch (error) {
+      registrarErroDetalhado(error, "Erro na verificação de adulteração");
+      return true;
     }
-
-    async recordUsage() {
-        try {
-            await this.ensureSecurityDirectory();
-
-            const today = new Date().toISOString().split('T')[0];
-            let usageData = {};
-
-            if (fs.existsSync(usageDataPath)) {
-                usageData = JSON.parse(fs.readFileSync(usageDataPath, 'utf8'));
-            }
-
-            usageData[today] = (usageData[today] || 0) + 1;
-            fs.writeFileSync(usageDataPath, JSON.stringify(usageData));
-        } catch (error) {
-            registrarErroDetalhado(error, 'Erro ao registrar uso');
-        }
-    }
-
-    async checkForTampering() {
-        try {
-            await this.ensureSecurityDirectory();
-
-            if (!fs.existsSync(timeDataPath)) {
-                await this.saveTimeCheckpoint();
-                return false;
-            }
-
-            const encrypted = fs.readFileSync(timeDataPath, 'utf8');
-            const decipher = crypto.createDecipheriv('aes-256-gcm', this.generateMachineHash(), Buffer.alloc(12));
-            const decrypted = decipher.update(encrypted, 'hex', 'utf8') + decipher.final('utf8');
-            const timeData = JSON.parse(decrypted);
-
-            if (timeData.envHash !== this.createEnvironmentHash()) {
-                return true;
-            }
-
-            if (Date.now() < timeData.timestamp) {
-                return true;
-            }
-
-            return false;
-        } catch (error) {
-            registrarErroDetalhado(error, 'Erro na verificação de adulteração');
-            return true;
-        }
-    }
+  }
 }
 
 function criarArquivoExemplo(filePath, conteudo) {
-    if (!fs.existsSync(filePath)) {
-        try {
-            fs.writeFileSync(filePath, conteudo);
-            console.log(`📄 Arquivo de exemplo criado: ${filePath}`);
-        } catch (err) {
-            registrarErroDetalhado(err, `Falha ao criar arquivo de exemplo: ${filePath}`);
-        }
+  if (!fs.existsSync(filePath)) {
+    try {
+      fs.writeFileSync(filePath, conteudo);
+      console.log(`📄 Arquivo de exemplo criado: ${filePath}`);
+    } catch (err) {
+      registrarErroDetalhado(
+        err,
+        `Falha ao criar arquivo de exemplo: ${filePath}`
+      );
     }
+  }
 }
 
 function writeLog(message) {
-    try {
-        fs.appendFileSync(logPath, message);
-        return true;
-    } catch (err) {
-        registrarErroDetalhado(err, 'Erro ao escrever log');
-        return false;
-    }
+  try {
+    fs.appendFileSync(logPath, message);
+    return true;
+  } catch (err) {
+    registrarErroDetalhado(err, "Erro ao escrever log");
+    return false;
+  }
 }
 // ================= VERIFICAÇÃO DE TEMPO ONLINE =================
 async function getNTPTime() {
-    return new Promise((resolve, reject) => {
-        const client = dgram.createSocket('udp4');
-        const ntpServers = ['pool.ntp.org', 'time.nist.gov', 'br.pool.ntp.org'];
-        const ntpPort = 123;
+  return new Promise((resolve, reject) => {
+    const client = dgram.createSocket("udp4");
+    const ntpServers = ["pool.ntp.org", "time.nist.gov", "br.pool.ntp.org"];
+    const ntpPort = 123;
 
-        const ntpData = Buffer.alloc(48);
-        ntpData[0] = 0x1B;
+    const ntpData = Buffer.alloc(48);
+    ntpData[0] = 0x1b;
 
-        let timeout = setTimeout(() => {
-            client.close();
-            reject(new Error('Timeout NTP'));
-        }, 2000);
+    let timeout = setTimeout(() => {
+      client.close();
+      reject(new Error("Timeout NTP"));
+    }, 2000);
 
-        client.on('message', (msg) => {
-            clearTimeout(timeout);
-            client.close();
-            const secondsSince1900 = msg.readUInt32BE(40);
-            const ntpEpoch = new Date(Date.UTC(1900, 0, 1));
-            resolve(new Date(ntpEpoch.getTime() + (secondsSince1900 * 1000)));
-        });
-
-        let attempts = 0;
-        const tryNextServer = () => {
-            if (attempts >= ntpServers.length) {
-                client.close();
-                reject(new Error('Todos os servidores NTP falharam'));
-                return;
-            }
-
-            client.send(ntpData, 0, ntpData.length, ntpPort, ntpServers[attempts++], (err) => {
-                if (err) tryNextServer();
-            });
-        };
-
-        tryNextServer();
+    client.on("message", (msg) => {
+      clearTimeout(timeout);
+      client.close();
+      const secondsSince1900 = msg.readUInt32BE(40);
+      const ntpEpoch = new Date(Date.UTC(1900, 0, 1));
+      resolve(new Date(ntpEpoch.getTime() + secondsSince1900 * 1000));
     });
+
+    let attempts = 0;
+    const tryNextServer = () => {
+      if (attempts >= ntpServers.length) {
+        client.close();
+        reject(new Error("Todos os servidores NTP falharam"));
+        return;
+      }
+
+      client.send(
+        ntpData,
+        0,
+        ntpData.length,
+        ntpPort,
+        ntpServers[attempts++],
+        (err) => {
+          if (err) tryNextServer();
+        }
+      );
+    };
+
+    tryNextServer();
+  });
 }
 
 async function getCurrentInternetTime() {
-    const TIME_SERVICES = [
-        {
-            name: 'WorldTimeAPI',
-            url: 'https://worldtimeapi.org/api/ip',
-            parser: res => {
-                const date = new Date(res.data.utc_datetime);
-                return {
-                    date,
-                    formatted: formatarDataHora(date),
-                    source: 'WorldTimeAPI'
-                };
-            }
-        },
-        {
-            name: 'TimeAPI.io',
-            url: 'https://www.timeapi.io/api/Time/current/zone?timeZone=UTC',
-            parser: res => {
-                const date = new Date(res.data.currentDateTime);
-                return {
-                    date,
-                    formatted: formatarDataHora(date),
-                    source: 'TimeAPI.io'
-                };
-            }
-        },
-        {
-            name: 'Google Time',
-            url: 'https://time.google.com/api/v1/time',
-            parser: res => {
-                const date = new Date(res.data.currentDateTime);
-                return {
-                    date,
-                    formatted: formatarDataHora(date),
-                    source: 'Google Time'
-                };
-            }
-        }
-    ];
-
-    for (const service of TIME_SERVICES) {
-        try {
-            const response = await axios.get(service.url, { timeout: 5000 });
-            const result = service.parser(response);
-            if (result.date instanceof Date && !isNaN(result.date.getTime())) {
-                console.log(`✅ Horário obtido de ${service.name}: ${result.formatted}`);
-                return result;
-            }
-        } catch (error) {
-            // console.warn(`⚠️ Falha com ${service.name}: ${error.message}`);
-        }
-    }
-
-    const HTTP_SERVERS = [
-        { name: 'Google', url: 'https://google.com' },
-        { name: 'Microsoft', url: 'https://microsoft.com' },
-        { name: 'AWS', url: 'https://aws.amazon.com' }
-    ];
-
-    for (const server of HTTP_SERVERS) {
-        try {
-            const response = await axios.head(server.url, { timeout: 1500 });
-            const serverDate = new Date(response.headers['date']);
-            if (!isNaN(serverDate.getTime())) {
-                const formatted = formatarDataHora(serverDate);
-                // console.log(`⏰ Consultando hora e data de ${server.name}: ${formatted}`);
-                return {
-                    date: serverDate,
-                    formatted,
-                    source: server.name
-                };
-            }
-        } catch (error) {
-            // console.warn(`⚠️ Falha no HEAD para ${server.name}`);
-        }
-    }
-
-    try {
-        const ntpTime = await getNTPTime();
-        const formatted = formatarDataHora(ntpTime);
-        console.log(`⏰ Usando NTP direto: ${formatted}`);
+  const TIME_SERVICES = [
+    {
+      name: "WorldTimeAPI",
+      url: "https://worldtimeapi.org/api/ip",
+      parser: (res) => {
+        const date = new Date(res.data.utc_datetime);
         return {
-            date: ntpTime,
-            formatted,
-            source: 'NTP'
+          date,
+          formatted: formatarDataHora(date),
+          source: "WorldTimeAPI",
         };
-    } catch (error) {
-        console.warn('⚠️ Falha no NTP direto:', error.message);
-    }
+      },
+    },
+    {
+      name: "TimeAPI.io",
+      url: "https://www.timeapi.io/api/Time/current/zone?timeZone=UTC",
+      parser: (res) => {
+        const date = new Date(res.data.currentDateTime);
+        return {
+          date,
+          formatted: formatarDataHora(date),
+          source: "TimeAPI.io",
+        };
+      },
+    },
+    {
+      name: "Google Time",
+      url: "https://time.google.com/api/v1/time",
+      parser: (res) => {
+        const date = new Date(res.data.currentDateTime);
+        return {
+          date,
+          formatted: formatarDataHora(date),
+          source: "Google Time",
+        };
+      },
+    },
+  ];
 
-    throw new Error('Todos os métodos de verificação de tempo falharam');
+  for (const service of TIME_SERVICES) {
+    try {
+      const response = await axios.get(service.url, { timeout: 5000 });
+      const result = service.parser(response);
+      if (result.date instanceof Date && !isNaN(result.date.getTime())) {
+        console.log(
+          `✅ Horário obtido de ${service.name}: ${result.formatted}`
+        );
+        return result;
+      }
+    } catch (error) {
+      // console.warn(`⚠️ Falha com ${service.name}: ${error.message}`);
+    }
+  }
+
+  const HTTP_SERVERS = [
+    { name: "Google", url: "https://google.com" },
+    { name: "Microsoft", url: "https://microsoft.com" },
+    { name: "AWS", url: "https://aws.amazon.com" },
+  ];
+
+  for (const server of HTTP_SERVERS) {
+    try {
+      const response = await axios.head(server.url, { timeout: 1500 });
+      const serverDate = new Date(response.headers["date"]);
+      if (!isNaN(serverDate.getTime())) {
+        const formatted = formatarDataHora(serverDate);
+        // console.log(`⏰ Consultando hora e data de ${server.name}: ${formatted}`);
+        return {
+          date: serverDate,
+          formatted,
+          source: server.name,
+        };
+      }
+    } catch (error) {
+      // console.warn(`⚠️ Falha no HEAD para ${server.name}`);
+    }
+  }
+
+  try {
+    const ntpTime = await getNTPTime();
+    const formatted = formatarDataHora(ntpTime);
+    console.log(`⏰ Usando NTP direto: ${formatted}`);
+    return {
+      date: ntpTime,
+      formatted,
+      source: "NTP",
+    };
+  } catch (error) {
+    console.warn("⚠️ Falha no NTP direto:", error.message);
+  }
+
+  throw new Error("Todos os métodos de verificação de tempo falharam");
 }
 
 // ================= VERIFICAÇÃO DE ASSINATURA =================
 async function checkSubscriptionStatus(timeSecurity) {
+  try {
+    console.log("\n⏳ Aguarde, verificando Assinatura...\n");
+    let currentTime;
+    let timeSource = "Sistema Local";
+    let formattedTime = "";
+
     try {
-        console.log('\n⏳ Aguarde, verificando Assinatura...\n');
-        let currentTime;
-        let timeSource = 'Sistema Local';
-        let formattedTime = '';
+      const timeResult = await getCurrentInternetTime();
+      currentTime = timeResult.date;
+      formattedTime = timeResult.formatted;
+      timeSource = timeResult.source;
+      await timeSecurity.saveTimeCheckpoint();
+    } catch (error) {
+      console.warn("⚠️ Usando verificação de tempo offline");
+      if (await timeSecurity.checkForTampering()) {
+        throw new Error("Possível adulteração temporal detectada");
+      }
 
-        try {
-            const timeResult = await getCurrentInternetTime();
-            currentTime = timeResult.date;
-            formattedTime = timeResult.formatted;
-            timeSource = timeResult.source;
-            await timeSecurity.saveTimeCheckpoint();
-        } catch (error) {
-            console.warn('⚠️ Usando verificação de tempo offline');
-            if (await timeSecurity.checkForTampering()) {
-                throw new Error('Possível adulteração temporal detectada');
-            }
+      currentTime = timeSecurity.lastKnownDate || new Date();
+      formattedTime = formatarDataHora(currentTime);
+    }
 
-            currentTime = timeSecurity.lastKnownDate || new Date();
-            formattedTime = formatarDataHora(currentTime);
-        }
+    const warningDate = new Date(SUBSCRIPTION_END_DATE);
+    warningDate.setDate(warningDate.getDate() - SUBSCRIPTION_WARNING_DAYS);
 
-        const warningDate = new Date(SUBSCRIPTION_END_DATE);
-        warningDate.setDate(warningDate.getDate() - SUBSCRIPTION_WARNING_DAYS);
+    const diasRestantes = Math.ceil(
+      (SUBSCRIPTION_END_DATE - currentTime) / (1000 * 60 * 60 * 24)
+    );
 
-        const diasRestantes = Math.ceil((SUBSCRIPTION_END_DATE - currentTime) / (1000 * 60 * 60 * 24));
-
-        console.log(`
+    console.log(`
 📅 Verificação de Assinatura:
         • Data atual: ${formattedTime} (Fonte: ${timeSource})
         • Data de expiração: ${formatarDataHora(SUBSCRIPTION_END_DATE)}
         • Dias restantes: ${diasRestantes}`);
 
-        if (currentTime > SUBSCRIPTION_END_DATE) {
-            console.log('\n❌ ASSINATURA EXPIRADA ❌');
-            return { status: false, expired: true };
-        }
-
-        return {
-            status: true,
-            warning: currentTime >= warningDate,
-            diasRestantes: diasRestantes
-        };
-    } catch (error) {
-        console.error('Erro na verificação de assinatura:', error.message);
-        writeLog(`\n=== ERRO VERIFICAÇÃO ===\n${error.message}\n==================\n`);
-        return { status: false, error: error.message };
+    if (currentTime > SUBSCRIPTION_END_DATE) {
+      console.log("\n❌ ASSINATURA EXPIRADA ❌");
+      return { status: false, expired: true };
     }
+
+    return {
+      status: true,
+      warning: currentTime >= warningDate,
+      diasRestantes: diasRestantes,
+    };
+  } catch (error) {
+    console.error("Erro na verificação de assinatura:", error.message);
+    writeLog(
+      `\n=== ERRO VERIFICAÇÃO ===\n${error.message}\n==================\n`
+    );
+    return { status: false, error: error.message };
+  }
 }
 // ================= FUNÇÕES DE CONFIGURAÇÃO =================
 function criarDiretoriosNecessarios() {
-    const diretoriosNecessarios = [logsDir, configDir, tempDir];
-    diretoriosNecessarios.forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            try {
-                fs.mkdirSync(dir, { recursive: true });
-                console.log(`📁 Diretório criado: ${dir}`);
-            } catch (err) {
-                registrarErroDetalhado(err, `Falha ao criar diretório: ${dir}`);
-            }
-        }
-    });
+  const diretoriosNecessarios = [logsDir, configDir, tempDir];
+  diretoriosNecessarios.forEach((dir) => {
+    if (!fs.existsSync(dir)) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`📁 Diretório criado: ${dir}`);
+      } catch (err) {
+        registrarErroDetalhado(err, `Falha ao criar diretório: ${dir}`);
+      }
+    }
+  });
 }
 
 // ================= CONFIGURAÇÃO DO WHATSAPP CLIENT =================
 function configurarWhatsAppClient() {
-    let chromePath;
-    if (process.platform === 'win32') {
-        const paths = [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            process.env.LOCALAPPDATA + '\\Google\\Chrome\\Application\\chrome.exe'
-        ];
-        chromePath = paths.find(fs.existsSync);
-    } else if (process.platform === 'darwin') {
-        chromePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    } else {
-        chromePath = '/usr/bin/google-chrome';
-    }
+  let chromePath;
+  if (process.platform === "win32") {
+    const paths = [
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+      process.env.LOCALAPPDATA + "\\Google\\Chrome\\Application\\chrome.exe",
+    ];
+    chromePath = paths.find(fs.existsSync);
+  } else if (process.platform === "darwin") {
+    chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+  } else {
+    chromePath = "/usr/bin/google-chrome";
+  }
 
-    console.log(`\n=== BOT DE WHATSAPP ===`);
-    console.log(`📘 Usando navegador Chrome em: ${chromePath || "Caminho padrão"}`);
+  console.log(`\n=== BOT DE WHATSAPP ===`);
+  console.log(
+    `📘 Usando navegador Chrome em: ${chromePath || "Caminho padrão"}`
+  );
 
-    return new whatsapp.Client({
-        authStrategy: new whatsapp.LocalAuth({ dataPath: path.join(execDir, '.wwebjs_auth') }),
-        puppeteer: {
-            headless: false,
-            executablePath: chromePath,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-connection-testing',  // Previne problemas de conexão
-                '--disable-renderer-backgrounding',  // Mantém a conexão ativa
-                '--disable-dev-shm-usage', // Adicione esta linha
-                '--no-zygote'
-            ],
-            timeout: 0  // Aumenta o timeout para 60 segundos
-        },
-        takeoverOnConflict: true,
-        sessionTimeout: 86400 // 24h em segundos
-    });
+  return new whatsapp.Client({
+    authStrategy: new whatsapp.LocalAuth({
+      dataPath: path.join(execDir, ".wwebjs_auth"),
+    }),
+    puppeteer: {
+      headless: false,
+      executablePath: chromePath,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-connection-testing", // Previne problemas de conexão
+        "--disable-renderer-backgrounding", // Mantém a conexão ativa
+        "--disable-dev-shm-usage", // Adicione esta linha
+        "--no-zygote",
+      ],
+      timeout: 0, // Aumenta o timeout para 60 segundos
+    },
+    takeoverOnConflict: true,
+    sessionTimeout: 86400, // 24h em segundos
+  });
 }
 
 // ================= ENVIO DE MENSAGENS =================
 async function enviarMensagens(client) {
-    try {
-        if (!fs.existsSync(numerosPath) || !fs.existsSync(mensagemPath)) {
-            throw new Error('Arquivos de configuração não encontrados');
-        }
+  try {
+    if (!fs.existsSync(numerosPath) || !fs.existsSync(mensagemPath)) {
+      throw new Error("Arquivos de configuração não encontrados");
+    }
 
-        const numeros = fs.readFileSync(numerosPath, 'utf8')
-            .split('\n')
-            .map(n => n.trim())
-            .filter(n => n && !n.startsWith('//'))
-            .map(n => n.replace(/\D/g, '') + "@c.us");
+    const numeros = fs
+      .readFileSync(numerosPath, "utf8")
+      .split("\n")
+      .map((n) => n.trim())
+      .filter((n) => n && !n.startsWith("//"))
+      .map((n) => n.replace(/\D/g, "") + "@c.us");
 
-        if (numeros.length === 0) throw new Error('Nenhum número válido encontrado');
+    if (numeros.length === 0)
+      throw new Error("Nenhum número válido encontrado");
 
-        const mensagem = fs.readFileSync(mensagemPath, 'utf8');
-        if (!mensagem.trim()) throw new Error('Mensagem vazia');
+    const mensagem = fs.readFileSync(mensagemPath, "utf8");
+    if (!mensagem.trim()) throw new Error("Mensagem vazia");
 
-        const inicioProcesso = new Date();
+    const inicioProcesso = new Date();
 
-        // Cabeçalho do log formatado conforme solicitado
-        let logContent = `
+    // Cabeçalho do log formatado conforme solicitado
+    let logContent = `
 📅 Verificação de Assinatura:
         • Data atual: ${formatarDataHora(inicioProcesso)} (Fonte: Google)
         • Data de expiração: ${formatarDataHora(SUBSCRIPTION_END_DATE)}
-        • Dias restantes: ${Math.ceil((SUBSCRIPTION_END_DATE - inicioProcesso) / (1000 * 60 * 60 * 24))}
+        • Dias restantes: ${Math.ceil(
+          (SUBSCRIPTION_END_DATE - inicioProcesso) / (1000 * 60 * 60 * 24)
+        )}
 === BOT DE WHATSAPP ===
 
 🔴 Iniciando WhatsApp Bot...
@@ -738,149 +809,179 @@ async function enviarMensagens(client) {
 📄 Lendo mensagem de: ${mensagemPath}
 📌 Mensagem carregada (${mensagem.length} caracteres).
 📤 Iniciando envio para ${numeros.length} números...
-${'='.repeat(50)}
+${"=".repeat(50)}
 📊 PROGRESSO DE ENVIO:
-${'='.repeat(50)}
+${"=".repeat(50)}
 `;
 
-        writeLog(logContent);
+    writeLog(logContent);
 
-        console.log(`\n🔍 Verificando arquivos de configuração...`);
-        console.log(`📄 Lendo números de: ${numerosPath}`);
-        console.log(`📌 Encontrados ${numeros.length} números para envio.`);
-        console.log(`📄 Lendo mensagem de: ${mensagemPath}`);
-        console.log(`📌 Mensagem carregada (${mensagem.length} caracteres).\n`);
+    console.log(`\n🔍 Verificando arquivos de configuração...`);
+    console.log(`📄 Lendo números de: ${numerosPath}`);
+    console.log(`📌 Encontrados ${numeros.length} números para envio.`);
+    console.log(`📄 Lendo mensagem de: ${mensagemPath}`);
+    console.log(`📌 Mensagem carregada (${mensagem.length} caracteres).\n`);
 
-        console.log(`📤 Iniciando envio para ${numeros.length} números...`);
-        console.log(`\n${'='.repeat(50)}`);
-        console.log(`📊 PROGRESSO DE ENVIO:`);
-        console.log(`${'='.repeat(50)}\n`);
+    console.log(`📤 Iniciando envio para ${numeros.length} números...`);
+    console.log(`\n${"=".repeat(50)}`);
+    console.log(`📊 PROGRESSO DE ENVIO:`);
+    console.log(`${"=".repeat(50)}\n`);
 
-        let enviadas = 0, falhas = 0;
-        let logDetails = '';
-        let ultimaAtualizacao = Date.now();
-        let temposEnvio = [];
-        let numerosComFalha = [];
+    let enviadas = 0,
+      falhas = 0;
+    let logDetails = "";
+    let ultimaAtualizacao = Date.now();
+    let temposEnvio = [];
+    let numerosComFalha = [];
 
-        // Função para formatar o tempo de maneira amigável
-        const formatarTempo = (segundos) => {
-            if (segundos < 60) {
-                return `${Math.round(segundos)} segundos`;
-            } else if (segundos < 3600) {
-                const minutos = Math.floor(segundos / 60);
-                const segs = Math.round(segundos % 60);
-                return `${minutos} min ${segs} s`;
-            } else {
-                const horas = Math.floor(segundos / 3600);
-                const minutos = Math.floor((segundos % 3600) / 60);
-                return `${horas} h ${minutos} min`;
-            }
-        };
+    // Função para formatar o tempo de maneira amigável
+    const formatarTempo = (segundos) => {
+      if (segundos < 60) {
+        return `${Math.round(segundos)} segundos`;
+      } else if (segundos < 3600) {
+        const minutos = Math.floor(segundos / 60);
+        const segs = Math.round(segundos % 60);
+        return `${minutos} min ${segs} s`;
+      } else {
+        const horas = Math.floor(segundos / 3600);
+        const minutos = Math.floor((segundos % 3600) / 60);
+        return `${horas} h ${minutos} min`;
+      }
+    };
 
-        // Função para atualizar o progresso no console
-        const atualizarProgresso = (atual, total, tempoDecorrido, temposEnvio) => {
-            const agora = Date.now();
-            // Atualiza no máximo a cada 500ms para não sobrecarregar o console
-            if (agora - ultimaAtualizacao < 500 && atual < total) return;
-            ultimaAtualizacao = agora;
+    // Função para atualizar o progresso no console
+    const atualizarProgresso = (atual, total, tempoDecorrido, temposEnvio) => {
+      const agora = Date.now();
+      // Atualiza no máximo a cada 500ms para não sobrecarregar o console
+      if (agora - ultimaAtualizacao < 500 && atual < total) return;
+      ultimaAtualizacao = agora;
 
-            // Calcula médias e estimativas
-            const percentualConcluido = (atual / total * 100).toFixed(1);
-            const percentualRestante = (100 - percentualConcluido).toFixed(1);
+      // Calcula médias e estimativas
+      const percentualConcluido = ((atual / total) * 100).toFixed(1);
+      const percentualRestante = (100 - percentualConcluido).toFixed(1);
 
-            // Calcula tempo médio por mensagem e estimativa de tempo restante
-            let tempoMedioPorMsg = tempoDecorrido / atual;
-            if (isNaN(tempoMedioPorMsg)) tempoMedioPorMsg = 0;
+      // Calcula tempo médio por mensagem e estimativa de tempo restante
+      let tempoMedioPorMsg = tempoDecorrido / atual;
+      if (isNaN(tempoMedioPorMsg)) tempoMedioPorMsg = 0;
 
-            // Usar média móvel dos últimos envios para estimativa mais precisa
-            let tempoEstimadoRestante = 0;
-            if (temposEnvio.length > 0) {
-                // Usa os últimos 5 tempos de envio ou todos disponíveis
-                const amostras = temposEnvio.slice(-5);
-                const mediaMaisRecente = amostras.reduce((a, b) => a + b, 0) / amostras.length;
-                tempoEstimadoRestante = mediaMaisRecente * (total - atual);
-            } else {
-                tempoEstimadoRestante = tempoMedioPorMsg * (total - atual);
-            }
+      // Usar média móvel dos últimos envios para estimativa mais precisa
+      let tempoEstimadoRestante = 0;
+      if (temposEnvio.length > 0) {
+        // Usa os últimos 5 tempos de envio ou todos disponíveis
+        const amostras = temposEnvio.slice(-5);
+        const mediaMaisRecente =
+          amostras.reduce((a, b) => a + b, 0) / amostras.length;
+        tempoEstimadoRestante = mediaMaisRecente * (total - atual);
+      } else {
+        tempoEstimadoRestante = tempoMedioPorMsg * (total - atual);
+      }
 
-            // Limpa linhas anteriores (3 linhas de progresso)
-            process.stdout.write('\x1B[3A\x1B[0J');
+      // Limpa linhas anteriores (3 linhas de progresso)
+      process.stdout.write("\x1B[3A\x1B[0J");
 
-            // Barra de progresso visual
-            const larguraBarra = 30;
-            const barraCompleta = Math.round((atual / total) * larguraBarra);
-            const barraProgresso = '█'.repeat(barraCompleta) + '░'.repeat(larguraBarra - barraCompleta);
+      // Barra de progresso visual
+      const larguraBarra = 30;
+      const barraCompleta = Math.round((atual / total) * larguraBarra);
+      const barraProgresso =
+        "█".repeat(barraCompleta) + "░".repeat(larguraBarra - barraCompleta);
 
-            console.log(`🔄 Progresso: ${barraProgresso} ${percentualConcluido}% concluído (${percentualRestante}% restante)`);
-            console.log(`📱 Mensagens: ${atual}/${total} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas`);
-            console.log(`⏱️ Tempo: ${formatarTempo(tempoDecorrido)} decorrido | ~${formatarTempo(tempoEstimadoRestante)} restante`);
-        };
+      console.log(
+        `🔄 Progresso: ${barraProgresso} ${percentualConcluido}% concluído (${percentualRestante}% restante)`
+      );
+      console.log(
+        `📱 Mensagens: ${atual}/${total} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas`
+      );
+      console.log(
+        `⏱️ Tempo: ${formatarTempo(
+          tempoDecorrido
+        )} decorrido | ~${formatarTempo(tempoEstimadoRestante)} restante`
+      );
+    };
 
-        // Exibir progresso inicial
-        console.log('\n\n'); // Espaço para as 3 linhas de progresso
-        atualizarProgresso(0, numeros.length, 0, []);
+    // Exibir progresso inicial
+    console.log("\n\n"); // Espaço para as 3 linhas de progresso
+    atualizarProgresso(0, numeros.length, 0, []);
 
-        for (let i = 0; i < numeros.length; i++) {
-            const numero = numeros[i];
-            const numeroFormatado = numero.replace('@c.us', '');
-            const inicioEnvio = Date.now();
+    for (let i = 0; i < numeros.length; i++) {
+      const numero = numeros[i];
+      const numeroFormatado = numero.replace("@c.us", "");
+      const inicioEnvio = Date.now();
 
-            try {
-                const contato = await client.getNumberId(numero);
-                if (!contato) {
-                    falhas++;
-                    numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falha
-                    logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Não está no WhatsApp\n---\n`;
-                } else {
-                    await client.sendMessage(contato._serialized, mensagem);
-                    enviadas++;
-                    logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Enviado com sucesso\n---\n`;
-                }
-
-                // Registra o tempo que levou para enviar esta mensagem
-                const tempoEnvio = (Date.now() - inicioEnvio) / 1000;
-                temposEnvio.push(tempoEnvio);
-
-                // Atualiza o progresso
-                const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
-                atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
-
-                // Pequeno delay entre os envios para evitar bloqueios
-                await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
-
-            } catch (error) {
-                falhas++;
-                numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falhas
-                logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Falha - ${error.message}\n---\n`;
-
-                // Atualiza o progresso mesmo em caso de erro
-                const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
-                atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
-            }
+      try {
+        const contato = await client.getNumberId(numero);
+        if (!contato) {
+          falhas++;
+          numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falha
+          logDetails += `--- DETALHES DO ENVIO ---\nData: ${
+            formatarDataHora(new Date()).split(" ")[0]
+          }\nHora: ${
+            formatarDataHora(new Date()).split(" ")[1]
+          }\nNumero: ${numeroFormatado}\nStatus: Não está no WhatsApp\n---\n`;
+        } else {
+          await client.sendMessage(contato._serialized, mensagem);
+          enviadas++;
+          logDetails += `--- DETALHES DO ENVIO ---\nData: ${
+            formatarDataHora(new Date()).split(" ")[0]
+          }\nHora: ${
+            formatarDataHora(new Date()).split(" ")[1]
+          }\nNumero: ${numeroFormatado}\nStatus: Enviado com sucesso\n---\n`;
         }
 
-        const fimProcesso = new Date();
-        const tempoExecucao = (fimProcesso - inicioProcesso) / 1000;
-        const tempoFormatado = formatarTempo(tempoExecucao);
-        const velocidadeMedia = numeros.length / tempoExecucao;
+        // Registra o tempo que levou para enviar esta mensagem
+        const tempoEnvio = (Date.now() - inicioEnvio) / 1000;
+        temposEnvio.push(tempoEnvio);
 
-        // Adiciona o resumo ao conteúdo do log
-        logContent += `
+        // Atualiza o progresso
+        const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
+        atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
+
+        // Pequeno delay entre os envios para evitar bloqueios
+        await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
+      } catch (error) {
+        falhas++;
+        numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falhas
+        logDetails += `--- DETALHES DO ENVIO ---\nData: ${
+          formatarDataHora(new Date()).split(" ")[0]
+        }\nHora: ${
+          formatarDataHora(new Date()).split(" ")[1]
+        }\nNumero: ${numeroFormatado}\nStatus: Falha - ${error.message}\n---\n`;
+
+        // Atualiza o progresso mesmo em caso de erro
+        const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
+        atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
+      }
+    }
+
+    const fimProcesso = new Date();
+    const tempoExecucao = (fimProcesso - inicioProcesso) / 1000;
+    const tempoFormatado = formatarTempo(tempoExecucao);
+    const velocidadeMedia = numeros.length / tempoExecucao;
+
+    // Adiciona o resumo ao conteúdo do log
+    logContent += `
 🔄 Progresso: ██████████████████████████████ 100.0% concluído (0.0% restante)
-📱 Mensagens: ${numeros.length}/${numeros.length} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas
+📱 Mensagens: ${numeros.length}/${
+      numeros.length
+    } enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas
 ⏱️   Tempo: ${formatarTempo(tempoExecucao)} decorrido | ~0 segundos restante
-${'='.repeat(50)}
+${"=".repeat(50)}
 📋 RESUMO DO ENVIO:
-${'='.repeat(50)}
+${"=".repeat(50)}
 ✅ Total de números processados: ${numeros.length}
-✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(enviadas / numeros.length * 100).toFixed(1)}%)
-❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)
+✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(
+      (enviadas / numeros.length) *
+      100
+    ).toFixed(1)}%)
+❌ Total de mensagens não enviadas: ${falhas} (${(
+      (falhas / numeros.length) *
+      100
+    ).toFixed(1)}%)
 ⏱️   Tempo total de execução: ${tempoFormatado}
 📄 Log completo salvo em: ${logPath}
 📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo
 
 === ⚠️  NÚMEROS COM FALHA DE ENVIO ===
-${numerosComFalha.join('\n')}
+${numerosComFalha.join("\n")}
 ===============================
 
  🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.
@@ -888,210 +989,243 @@ ${numerosComFalha.join('\n')}
  💡 Para enviar mais mensagens, edite os arquivos de configuração e reinicie o programa.
 `;
 
-        // Escreve todo o conteúdo no arquivo de log
-        fs.writeFileSync(logPath, logContent, 'utf8');
+    // Escreve todo o conteúdo no arquivo de log
+    fs.writeFileSync(logPath, logContent, "utf8");
 
-        console.log(`\n${'='.repeat(50)}`);
-        console.log(`📋 RESUMO DO ENVIO:`);
-        console.log(`${'='.repeat(50)}`);
-        console.log(`✅ Total de números processados: ${numeros.length}`);
-        console.log(`✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(enviadas / numeros.length * 100).toFixed(1)}%)`);
-        console.log(`❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)`);
-        console.log(`⏱️ Tempo total de execução: ${tempoFormatado}`);
-        console.log(`📄 Log completo salvo em: ${logPath}`);
-        console.log(`📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo`);
+    console.log(`\n${"=".repeat(50)}`);
+    console.log(`📋 RESUMO DO ENVIO:`);
+    console.log(`${"=".repeat(50)}`);
+    console.log(`✅ Total de números processados: ${numeros.length}`);
+    console.log(
+      `✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(
+        (enviadas / numeros.length) *
+        100
+      ).toFixed(1)}%)`
+    );
+    console.log(
+      `❌ Total de mensagens não enviadas: ${falhas} (${(
+        (falhas / numeros.length) *
+        100
+      ).toFixed(1)}%)`
+    );
+    console.log(`⏱️ Tempo total de execução: ${tempoFormatado}`);
+    console.log(`📄 Log completo salvo em: ${logPath}`);
+    console.log(
+      `📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo`
+    );
 
-        console.log(`\n=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===`);
-        console.log(numerosComFalha.join('\n'));
-        console.log(`===============================`);
+    console.log(`\n=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===`);
+    console.log(numerosComFalha.join("\n"));
+    console.log(`===============================`);
 
-        console.log(`\n 🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.`);
-        console.log(` 🛑 Para encerrar, pressione ENTER ou feche esta janela.`);
-        console.log(` 💡 Para enviar mais mensagens, edite os arquivos de configuração e reinicie o programa.\n`);
+    console.log(
+      `\n 🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.`
+    );
+    console.log(` 🛑 Para encerrar, pressione ENTER ou feche esta janela.`);
+    console.log(
+      ` 💡 Para enviar mais mensagens, edite os arquivos de configuração e reinicie o programa.\n`
+    );
 
-        // Aguardar o pressionamento da tecla ENTER e encerrar o programa
-        await aguardarTeclaParaSair();
+    // Aguardar o pressionamento da tecla ENTER e encerrar o programa
+    await aguardarTeclaParaSair();
 
-        // Encerrar a sessão do WhatsApp Web
-        await client.destroy();
+    // Encerrar a sessão do WhatsApp Web
+    await client.destroy();
 
-        // Manter o programa em execução e aguardar entrada do usuário
-        await new Promise(() => { });
-
-
-    } catch (error) {
-        console.error(`\n❌ ERRO: ${error.message}`);
-        writeLog(`\n=== ERRO ===\n${error.stack}\n`);
-        throw error;
-    }
+    // Manter o programa em execução e aguardar entrada do usuário
+    await new Promise(() => {});
+  } catch (error) {
+    console.error(`\n❌ ERRO: ${error.message}`);
+    writeLog(`\n=== ERRO ===\n${error.stack}\n`);
+    throw error;
+  }
 }
-
 
 // =========================== FUNÇÃO PRINCIPAL MODIFICADA ===========================
 async function main() {
-    // SOLUÇÃO ESSENCIAL 
-    if (process.pkg) {
-        const handleStreamError = (err) => {
-            if (err.code !== 'ENOTCONN') {  // Ignora apenas ENOTCONN
-                console.error('Erro no stream:', err);
-            }
-        };
-        process.stdin.on('error', handleStreamError);
-        process.stdout.on('error', handleStreamError);
-        process.stderr.on('error', handleStreamError);
+  // SOLUÇÃO ESSENCIAL
+  if (process.pkg) {
+    const handleStreamError = (err) => {
+      if (err.code !== "ENOTCONN") {
+        // Ignora apenas ENOTCONN
+        console.error("Erro no stream:", err);
+      }
+    };
+    process.stdin.on("error", handleStreamError);
+    process.stdout.on("error", handleStreamError);
+    process.stderr.on("error", handleStreamError);
+  }
+
+  let client = null;
+
+  try {
+    // Configurações iniciais (mantendo suas verificações originais)
+    console.log(`Modo de execução: ${process.pkg ? "Executável" : "Script"}`);
+    console.log(
+      `Diretório de execução: ${
+        process.pkg ? path.dirname(process.execPath) : __dirname
+      }`
+    );
+
+    // Configuração especial para executáveis Windows (mantida do original)
+    if (process.pkg && process.platform === "win32") {
+      process.stdin.on("data", () => {});
+      process.stdin.resume();
     }
 
-    let client = null;
+    // Verificação de diretórios (versão mais completa)
+    const timeSecurity = new TimeSecurity();
+    criarDiretoriosNecessarios();
+    criarArquivoExemplo(
+      numerosPath,
+      "5511999999999\n5511888888888\n// Um número por linha"
+    );
+    criarArquivoExemplo(mensagemPath, "Olá! Esta é uma mensagem de exemplo.");
 
-    try {
-        // Configurações iniciais (mantendo suas verificações originais)
-        console.log(`Modo de execução: ${process.pkg ? 'Executável' : 'Script'}`);
-        console.log(`Diretório de execução: ${process.pkg ? path.dirname(process.execPath) : __dirname}`);
+    // Verificação de assinatura (com aviso de expiração)
+    const licenseManager = require("./licenseManager");
+    const licenseValidation = await licenseManager.validateLicense();
 
-        // Configuração especial para executáveis Windows (mantida do original)
-        if (process.pkg && process.platform === 'win32') {
-            process.stdin.on('data', () => { });
-            process.stdin.resume();
+    if (!licenseValidation.isValid) {
+      await aguardarTeclaParaSair(
+        `Licença inválida: ${licenseValidation.reason}`
+      );
+      return;
+    }
+
+    // if (subscription.warning) {
+    //   const rl = readline.createInterface({
+    //     input: process.stdin,
+    //     output: process.stdout,
+    //   });
+    //   const resposta = await new Promise((resolve) => {
+    //     rl.question(
+    //       "📤 Assinatura próxima do vencimento. Deseja continuar? (s/n): ",
+    //       resolve
+    //     );
+    //   });
+    //   rl.close();
+
+    //   if (resposta.toLowerCase() !== "s") {
+    //     await aguardarTeclaParaSair("Operação cancelada pelo usuário");
+    //     return;
+    //   }
+    // }
+
+    // Inicialização do client (versão otimizada)
+    client = configurarWhatsAppClient();
+    console.log("\n🔴 Iniciando WhatsApp Bot...");
+
+    // Configuração de eventos (mantendo tratamento de erros)
+    client.on("qr", (qr) => {
+      console.log("🔎 QR Code gerado, escaneie para conectar");
+      qrcode.toFile(qrCodePath, qr, { errorCorrectionLevel: "H" }, (err) => {
+        if (err) {
+          console.error("❌ Erro ao gerar QR Code:", err.message);
+          return;
         }
-
-        // Verificação de diretórios (versão mais completa)
-        const timeSecurity = new TimeSecurity();
-        criarDiretoriosNecessarios();
-        criarArquivoExemplo(numerosPath, "5511999999999\n5511888888888\n// Um número por linha");
-        criarArquivoExemplo(mensagemPath, "Olá! Esta é uma mensagem de exemplo.");
-
-        // Verificação de assinatura (com aviso de expiração)
-        const subscription = await checkSubscriptionStatus(timeSecurity);
-        if (!subscription.status) {
-            await aguardarTeclaParaSair('Não foi possível verificar a assinatura');
-            return;
+        try {
+          if (process.platform === "win32") exec(`start "" "${qrCodePath}"`);
+          else if (process.platform === "darwin") exec(`open "${qrCodePath}"`);
+          else exec(`xdg-open "${qrCodePath}"`);
+        } catch (err) {
+          console.log(`ℹ️ QR Code salvo em: ${qrCodePath}`);
         }
+      });
+    });
 
-        if (subscription.warning) {
-            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-            const resposta = await new Promise(resolve => {
-                rl.question('📤 Assinatura próxima do vencimento. Deseja continuar? (s/n): ', resolve);
-            });
-            rl.close();
+    // client.on('ready', async () => {
+    //     console.log('✅ Bot do WhatsApp está pronto para enviar mensagens!');
+    //     try {
+    //         await timeSecurity.recordUsage();
+    //         await enviarMensagens(client);
+    //         console.log('\n🟢 Processo de envio concluído!');
+    //         console.log('ℹ️  O programa continuará em execução.');
+    //         await timeSecurity.saveTimeCheckpoint();
+    //         // await new Promise(() => { });
 
-            if (resposta.toLowerCase() !== 's') {
-                await aguardarTeclaParaSair('Operação cancelada pelo usuário');
-                return;
-            }
-        }
+    //         console.log('\n🟢 Bot em execução contínua. Pressione CTRL+C para sair');
 
-        // Inicialização do client (versão otimizada)
-        client = configurarWhatsAppClient();
-        console.log('\n🔴 Iniciando WhatsApp Bot...');
+    //         while (true) {
+    //             try {
+    //                 // Verifica a conexão a cada 10 segundos
+    //                 if (client.pupBrowser && !client.pupBrowser.isConnected()) {
+    //                     console.log('⚠️ Conexão perdida! Reconectando...');
+    //                     await client.initialize();
+    //                 }
+    //                 await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10s
 
-        // Configuração de eventos (mantendo tratamento de erros)
-        client.on('qr', qr => {
-            console.log('🔎 QR Code gerado, escaneie para conectar');
-            qrcode.toFile(qrCodePath, qr, { errorCorrectionLevel: 'H' }, (err) => {
-                if (err) {
-                    console.error('❌ Erro ao gerar QR Code:', err.message);
-                    return;
-                }
-                try {
-                    if (process.platform === 'win32') exec(`start "" "${qrCodePath}"`);
-                    else if (process.platform === 'darwin') exec(`open "${qrCodePath}"`);
-                    else exec(`xdg-open "${qrCodePath}"`);
-                } catch (err) {
-                    console.log(`ℹ️ QR Code salvo em: ${qrCodePath}`);
-                }
-            });
-        });
+    //             } catch (error) {
+    //                 console.error('Erro no loop principal:', error.message);
+    //                 await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5s antes de retry
+    //             }
+    //         }
 
-        // client.on('ready', async () => {
-        //     console.log('✅ Bot do WhatsApp está pronto para enviar mensagens!');
-        //     try {
-        //         await timeSecurity.recordUsage();
-        //         await enviarMensagens(client);
-        //         console.log('\n🟢 Processo de envio concluído!');
-        //         console.log('ℹ️  O programa continuará em execução.');
-        //         await timeSecurity.saveTimeCheckpoint();
-        //         // await new Promise(() => { });
+    //     } catch (error) {
+    //         registrarErroDetalhado(error, 'Erro durante envio');
+    //         await aguardarTeclaParaSair('Erro durante o envio de mensagens');
+    //     }
+    // });
 
-        //         console.log('\n🟢 Bot em execução contínua. Pressione CTRL+C para sair');
+    client.on("disconnected", async (reason) => {
+      console.log("🚨 Desconectado. Motivo:", reason);
+      console.log("⚡ Tentando reconectar em 5 segundos...");
 
-        //         while (true) {
-        //             try {
-        //                 // Verifica a conexão a cada 10 segundos
-        //                 if (client.pupBrowser && !client.pupBrowser.isConnected()) {
-        //                     console.log('⚠️ Conexão perdida! Reconectando...');
-        //                     await client.initialize();
-        //                 }
-        //                 await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10s
-
-        //             } catch (error) {
-        //                 console.error('Erro no loop principal:', error.message);
-        //                 await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5s antes de retry
-        //             }
-        //         }
-
-        //     } catch (error) {
-        //         registrarErroDetalhado(error, 'Erro durante envio');
-        //         await aguardarTeclaParaSair('Erro durante o envio de mensagens');
-        //     }
-        // });
-
-
-
-        client.on('disconnected', async (reason) => {
-            console.log('🚨 Desconectado. Motivo:', reason);
-            console.log('⚡ Tentando reconectar em 5 segundos...');
-
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            try {
-                await client.initialize();
-            } catch (err) {
-                console.log('❌ Falha na reconexão:', err.message);
-            }
-        });
-
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      try {
         await client.initialize();
-        client.on('ready', async () => {
-            console.log('✅ Sessão ativa - Iniciando serviços');
-            
-            try {
-                // 1. Envio de mensagens
-                await enviarMensagens(client);
-                
-                // 2. Monitoramento de atividade
-                setInterval(() => {
-                    console.log('📊 Status:', {
-                        uptime: Math.floor(process.uptime() / 60) + ' minutos',
-                        memory: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + 'MB',
-                        status: client.pupBrowser?.isConnected() ? '✅ Conectado' : '❌ Desconectado'
-                    });
-                }, 60000);
-                
-                // 3. Batimentos de presença (modo moderno)
-                const keepAlive = setInterval(async () => {
-                    try {
-                        await client.pupPage.evaluate(() => {
-                            window.Store.Presence.setAvailable();
-                        });
-                        console.log('❤️ Presença atualizada:', new Date().toLocaleTimeString());
-                    } catch (error) {
-                        console.log('⚠️ Falha ao atualizar presença:', error.message);
-                        clearInterval(keepAlive);
-                    }
-                }, 25000);
-                
-            } catch (error) {
-                console.error('❌ Erro na sessão:', error);
-            }
-        });
+      } catch (err) {
+        console.log("❌ Falha na reconexão:", err.message);
+      }
+    });
 
-    } catch (err) {
-        registrarErroDetalhado(err, 'Erro fatal na inicialização');
-        await aguardarTeclaParaSair('Erro na inicialização: ' + err.message);
-    }
+    await client.initialize();
+    client.on("ready", async () => {
+      console.log("✅ Sessão ativa - Iniciando serviços");
+
+      try {
+        // 1. Envio de mensagens
+        await enviarMensagens(client);
+
+        // 2. Monitoramento de atividade
+        setInterval(() => {
+          console.log("📊 Status:", {
+            uptime: Math.floor(process.uptime() / 60) + " minutos",
+            memory: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + "MB",
+            status: client.pupBrowser?.isConnected()
+              ? "✅ Conectado"
+              : "❌ Desconectado",
+          });
+        }, 60000);
+
+        // 3. Batimentos de presença (modo moderno)
+        const keepAlive = setInterval(async () => {
+          try {
+            await client.pupPage.evaluate(() => {
+              window.Store.Presence.setAvailable();
+            });
+            console.log(
+              "❤️ Presença atualizada:",
+              new Date().toLocaleTimeString()
+            );
+          } catch (error) {
+            console.log("⚠️ Falha ao atualizar presença:", error.message);
+            clearInterval(keepAlive);
+          }
+        }, 25000);
+      } catch (error) {
+        console.error("❌ Erro na sessão:", error);
+      }
+    });
+  } catch (error) {
+    registrarErroDetalhado(error, "Erro fatal na inicialização");
+    console.error('Stack:', error.stack);
+    await aguardarTeclaParaSair("Erro na inicialização: " + error.message);
+  }
 }
 
 // Remover process.stdin.resume() existente
-main().catch(err => {
-    registrarErroDetalhado(err, 'Erro no processo principal');
-    aguardarTeclaParaSair('Erro crítico no processo principal');
+main().catch((err) => {
+  registrarErroDetalhado(err, "Erro no processo principal");
+  aguardarTeclaParaSair("Erro crítico no processo principal");
 });
