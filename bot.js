@@ -14,20 +14,11 @@ client.on('qr', qr => {
 client.on('ready', async () => {
     console.log("✅ Bot do WhatsApp está pronto para enviar mensagens!");
 
+    // Lê os números de telefone do arquivo 'numeros.txt'
     const numeros = fs.readFileSync('numeros.txt', 'utf8').split('\n').map(n => n.trim());
-    const mensagem = `
-    E aí, tudo bem? Esperamos que sim! 😊
-    
-    Se você está recebendo esta mensagem, é porque já garantiu sua inscrição para o Retiro Espiritual 2025! 🎉🙏
-    
-    Agora, se ainda não entrou no nosso grupo de informações, não perde tempo! Clica no link abaixo e já chega junto! Em breve, vamos compartilhar todas as novidades e detalhes sobre o retiro.
-    
-    Vai ser incrível e queremos você por dentro de tudo! ✨🔥
-    
-    Nos vemos em breve!
-    
-    🔥 | https://chat.whatsapp.com/EaCPZJsLM3ADm7uby2deL2
-    `;
+
+    // Lê o conteúdo da mensagem do arquivo 'mensagem.txt'
+    const mensagem = fs.readFileSync('mensagem.txt', 'utf8');
 
     for (let numero of numeros) {
         if (numero) {
