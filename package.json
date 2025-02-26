@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Bot do WhatsApp",
   "main": "bot.js",
-  "bin": "bot.js",
-  "type": "module",
+  "bin": {
+    "whatsapp-bot": "bot.js"
+  },
   "dependencies": {
     "open": "^10.1.0",
     "qrcode": "^1.5.4",
@@ -12,7 +13,7 @@
     "whatsapp-web.js": "^1.0.0"
   },
   "scripts": {
-    "start": "node index.js"
+    "start": "node bot.js"
   },
   "author": "",
   "license": "ISC"
