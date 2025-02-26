@@ -18,8 +18,23 @@ const logPath = path.join(__dirname, 'log.txt');
 const { Client, LocalAuth } = whatsapp;  // Desestruturando para pegar Client e LocalAuth
 
 const client = new Client({
-    authStrategy: new LocalAuth()
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        headless: false, // Para ver o navegador rodando (pode mudar para true depois de testar)
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
+
+// Garante que a página está carregada antes de rodar scripts
+async function esperarCarregamento() {
+    try {
+        await client.pupPage.waitForNavigation({ waitUntil: 'networkidle0' });
+        await client.pupPage.waitForSelector('._2AWRr'); // Seletor do WhatsApp Web após carregamento
+        console.log("📲 WhatsApp Web carregado com sucesso!");
+    } catch (error) {
+        console.error("⚠ Erro ao esperar pelo carregamento:", error);
+    }
+}
 
 client.on('qr', qr => {
     console.log("Escaneie o QR Code abaixo para conectar:");
@@ -38,11 +53,29 @@ client.on('qr', qr => {
     });
 });
 
+// Verifica quando está autenticado
+client.on('authenticated', () => {
+    console.log('✅ Autenticado com sucesso!');
+});
+
+// Trata falhas de autenticação
+client.on('auth_failure', msg => {
+    console.error('❌ Falha na autenticação:', msg);
+});
+
+// Quando o cliente estiver pronto
 client.on('ready', async () => {
     console.log("✅ Bot do WhatsApp está pronto para enviar mensagens!");
+    
+    await esperarCarregamento(); // Garante que a página esteja carregada
 
     // Lê os números de telefone e a mensagem a partir dos arquivos
-    const numeros = fs.readFileSync(numerosPath, 'utf8').split('\n').map(n => n.trim());
+    const numeros = fs.readFileSync(numerosPath, 'utf8')
+        .split('\n')
+        .map(n => n.trim())
+        .filter(n => n !== '') // Remove linhas vazias
+        .map(n => n + "@c.us");
+
     const mensagem = fs.readFileSync(mensagemPath, 'utf8');
 
     let mensagensEnviadas = 0;
@@ -76,14 +109,14 @@ Message: ${mensagem}
             }
         }
     }
- 
+
     const resumoLog = `
 ✅ Total de mensagens enviadas: ${mensagensEnviadas}
 ❌ Total de mensagens não enviadas: ${mensagensNaoEnviadas}
 
     `;
     fs.appendFileSync(logPath, resumoLog);
- 
+
     console.log("✅ Todas as mensagens foram processadas!");
 });
 
