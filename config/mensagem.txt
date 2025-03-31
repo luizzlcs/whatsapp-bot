@@ -1,0 +1,5 @@
+Olá! Esta é uma mensagem de exemplo.
+Modifique este arquivo com sua mensagem real.
+
+Atenciosamente,
+Seu Nome

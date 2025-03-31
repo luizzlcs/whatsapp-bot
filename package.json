@@ -1,20 +1,64 @@
 {
   "name": "whatsapp-bot",
   "version": "1.0.0",
-  "description": "Bot do WhatsApp",
+  "description": "Bot de envio de mensagens WhatsApp",
   "main": "bot.js",
-  "bin": {
-    "whatsapp-bot": "bot.js"
+  "bin": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "build": "pkg . --targets node18-win-x64 --output whatsapp-bot.exe --options expose-gc --public",
+    "build:prod": "pkg . --targets node18-win-x64 --output whatsapp-bot.exe --options expose-gc --public --no-bytecode",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "pkg": {
+    "assets": [
+      "config/**/*",
+      "logs/**/*",
+      "temp/**/*",
+      ".wwebjs_auth/**/*",
+      "node_modules/axios/**/*",
+      "node_modules/qrcode/**/*",
+      "node_modules/whatsapp-web.js/**/*",
+      "node_modules/puppeteer-extra/**/*",
+      "node_modules/debug/**/*",
+      "node_modules/ms/**/*"
+    ],
+    "scripts": [
+      "node_modules/whatsapp-web.js/src/**/*.js",
+      "node_modules/puppeteer-extra/**/*.js"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
   },
   "dependencies": {
-    "open": "^10.1.0",
+    "axios": "^0.27.2",
+    "puppeteer": "^21.11.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.0.0"
+    "whatsapp-web.js": "^1.23.2"
   },
-  "scripts": {
-    "start": "node bot.js"
+  "devDependencies": {
+    "pkg": "^5.8.1"
   },
-  "author": "",
-  "license": "ISC"
+  "author": "Seu Nome",
+  "license": "ISC",
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "URL_DO_SEU_REPOSITORIO"
+  },
+  "bugs": {
+    "url": "URL_DOS_ISSUES"
+  },
+  "homepage": "URL_DO_PROJETO",
+  "pkg-fix": {
+    "dependencies": {
+      "axios": "cjs"
+    }
+  }
 }
