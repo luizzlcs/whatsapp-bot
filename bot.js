@@ -708,49 +708,128 @@ async function enviarMensagens(client) {
         console.log(`📌 Mensagem carregada (${mensagem.length} caracteres).\n`);
 
         console.log(`📤 Iniciando envio para ${numeros.length} números...`);
+        console.log(`\n${'='.repeat(50)}`);
+        console.log(`📊 PROGRESSO DE ENVIO:`);
+        console.log(`${'='.repeat(50)}\n`);
 
         let enviadas = 0, falhas = 0;
         let logDetails = '';
+        let ultimaAtualizacao = Date.now();
+        let temposEnvio = [];
+
+        // Função para formatar o tempo de maneira amigável
+        const formatarTempo = (segundos) => {
+            if (segundos < 60) {
+                return `${Math.round(segundos)} segundos`;
+            } else if (segundos < 3600) {
+                const minutos = Math.floor(segundos / 60);
+                const segs = Math.round(segundos % 60);
+                return `${minutos} min ${segs} s`;
+            } else {
+                const horas = Math.floor(segundos / 3600);
+                const minutos = Math.floor((segundos % 3600) / 60);
+                return `${horas} h ${minutos} min`;
+            }
+        };
+
+        // Função para atualizar o progresso no console
+        const atualizarProgresso = (atual, total, tempoDecorrido, temposEnvio) => {
+            const agora = Date.now();
+            // Atualiza no máximo a cada 500ms para não sobrecarregar o console
+            if (agora - ultimaAtualizacao < 500 && atual < total) return;
+            ultimaAtualizacao = agora;
+
+            // Calcula médias e estimativas
+            const percentualConcluido = (atual / total * 100).toFixed(1);
+            const percentualRestante = (100 - percentualConcluido).toFixed(1);
+
+            // Calcula tempo médio por mensagem e estimativa de tempo restante
+            let tempoMedioPorMsg = tempoDecorrido / atual;
+            if (isNaN(tempoMedioPorMsg)) tempoMedioPorMsg = 0;
+
+            // Usar média móvel dos últimos envios para estimativa mais precisa
+            let tempoEstimadoRestante = 0;
+            if (temposEnvio.length > 0) {
+                // Usa os últimos 5 tempos de envio ou todos disponíveis
+                const amostras = temposEnvio.slice(-5);
+                const mediaMaisRecente = amostras.reduce((a, b) => a + b, 0) / amostras.length;
+                tempoEstimadoRestante = mediaMaisRecente * (total - atual);
+            } else {
+                tempoEstimadoRestante = tempoMedioPorMsg * (total - atual);
+            }
+
+            // Limpa linhas anteriores (3 linhas de progresso)
+            process.stdout.write('\x1B[3A\x1B[0J');
+
+            // Barra de progresso visual
+            const larguraBarra = 30;
+            const barraCompleta = Math.round((atual / total) * larguraBarra);
+            const barraProgresso = '█'.repeat(barraCompleta) + '░'.repeat(larguraBarra - barraCompleta);
+
+            console.log(`🔄 Progresso: ${barraProgresso} ${percentualConcluido}% concluído (${percentualRestante}% restante)`);
+            console.log(`📱 Mensagens: ${atual}/${total} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas`);
+            console.log(`⏱️ Tempo: ${formatarTempo(tempoDecorrido)} decorrido | ~${formatarTempo(tempoEstimadoRestante)} restante`);
+        };
+
+        // Exibir progresso inicial
+        console.log('\n\n'); // Espaço para as 3 linhas de progresso
+        atualizarProgresso(0, numeros.length, 0, []);
 
         for (let i = 0; i < numeros.length; i++) {
             const numero = numeros[i];
             const numeroFormatado = numero.replace('@c.us', '');
+            const inicioEnvio = Date.now();
 
             try {
-                console.log(`🔄 Processando ${i + 1}/${numeros.length}: ${numeroFormatado}`);
-
                 const contato = await client.getNumberId(numero);
                 if (!contato) {
-                    console.log(`❌ ${numeroFormatado} não está no WhatsApp`);
                     falhas++;
                     logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Não está no WhatsApp\n---\n`;
-                    continue;
+                } else {
+                    await client.sendMessage(contato._serialized, mensagem);
+                    enviadas++;
+                    logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Enviado com sucesso\n---\n`;
                 }
 
-                await client.sendMessage(contato._serialized, mensagem);
-                console.log(`✅ Mensagem enviada para ${numeroFormatado}`);
-                enviadas++;
-                logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Enviado com sucesso\n---\n`;
+                // Registra o tempo que levou para enviar esta mensagem
+                const tempoEnvio = (Date.now() - inicioEnvio) / 1000;
+                temposEnvio.push(tempoEnvio);
 
+                // Atualiza o progresso
+                const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
+                atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
+
+                // Pequeno delay entre os envios para evitar bloqueios
                 await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+
             } catch (error) {
-                console.log(`❌ Erro ao enviar para ${numeroFormatado}: ${error.message}`);
                 falhas++;
                 logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Falha - ${error.message}\n---\n`;
+
+                // Atualiza o progresso mesmo em caso de erro
+                const tempoDecorrido = (Date.now() - inicioProcesso) / 1000;
+                atualizarProgresso(i + 1, numeros.length, tempoDecorrido, temposEnvio);
             }
         }
 
         const fimProcesso = new Date();
         const tempoExecucao = (fimProcesso - inicioProcesso) / 1000;
+        const tempoFormatado = formatarTempo(tempoExecucao);
 
-        console.log(`\n📋 RESUMO DO ENVIO:`);
+        console.log(`\n${'='.repeat(50)}`);
+        console.log(`📋 RESUMO DO ENVIO:`);
+        console.log(`${'='.repeat(50)}`);
         console.log(`✅ Total de números processados: ${numeros.length}`);
-        console.log(`✅ Total de mensagens enviadas: ${enviadas}`);
-        console.log(`❌ Total de mensagens não enviadas: ${falhas}`);
+        console.log(`✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(enviadas / numeros.length * 100).toFixed(1)}%)`);
+        console.log(`❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)`);
+        console.log(`⏱️ Tempo total de execução: ${tempoFormatado}`);
         console.log(`📄 Log completo salvo em: ${logPath}`);
-        console.log(`⏱️ Tempo de execução: ${tempoExecucao.toFixed(2)} segundos`);
 
-        const logFooter = `\n=== RESUMO DO ENVIO ===\nTotal de números processados: ${numeros.length}\nTotal de mensagens enviadas: ${enviadas}\nTotal de mensagens não enviadas: ${falhas}\nFinalizado em: ${formatarDataHora(fimProcesso)}\n===============================\n`;
+        // Calcular métricas adicionais
+        const velocidadeMedia = numeros.length / tempoExecucao;
+        console.log(`📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo`);
+
+        const logFooter = `\n=== RESUMO DO ENVIO ===\nTotal de números processados: ${numeros.length}\nTotal de mensagens enviadas: ${enviadas}\nTotal de mensagens não enviadas: ${falhas}\nTempo de execução: ${tempoFormatado}\nVelocidade média: ${velocidadeMedia.toFixed(2)} msg/s\nFinalizado em: ${formatarDataHora(fimProcesso)}\n===============================\n`;
         writeLog(logDetails + logFooter);
 
     } catch (error) {
@@ -759,6 +838,7 @@ async function enviarMensagens(client) {
         throw error;
     }
 }
+
 
 // =========================== FUNÇÃO PRINCIPAL MODIFICADA ===========================
 async function main() {
