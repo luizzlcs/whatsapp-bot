@@ -293,6 +293,17 @@ function formatarDataHora(date) {
     return `${dia}/${mes}/${ano} ${horas}:${minutos}:${segundos}`;
 }
 
+function formatarListaNumeros(numeros) {
+    if (numeros.length === 0) return "Nenhum número com falha";
+
+    // Agrupa em linhas de 5 números para melhor visualização
+    let resultado = '';
+    for (let i = 0; i < numeros.length; i += 5) {
+        resultado += numeros.slice(i, i + 5).join(', ') + '\n';
+    }
+    return resultado;
+}
+
 // =========================== SISTEMA DE SEGURANÇA TEMPORAL =================
 class TimeSecurity {
     constructor() {
@@ -716,6 +727,7 @@ async function enviarMensagens(client) {
         let logDetails = '';
         let ultimaAtualizacao = Date.now();
         let temposEnvio = [];
+        let numerosComFalha = [];
 
         // Função para formatar o tempo de maneira amigável
         const formatarTempo = (segundos) => {
@@ -784,6 +796,7 @@ async function enviarMensagens(client) {
                 const contato = await client.getNumberId(numero);
                 if (!contato) {
                     falhas++;
+                    numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falha
                     logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Não está no WhatsApp\n---\n`;
                 } else {
                     await client.sendMessage(contato._serialized, mensagem);
@@ -804,6 +817,7 @@ async function enviarMensagens(client) {
 
             } catch (error) {
                 falhas++;
+                numerosComFalha.push(numeroFormatado); // Adiciona o número à lista de falhas
                 logDetails += `--- DETALHES DO ENVIO ---\nData: ${formatarDataHora(new Date()).split(' ')[0]}\nHora: ${formatarDataHora(new Date()).split(' ')[1]}\nNumero: ${numeroFormatado}\nStatus: Falha - ${error.message}\n---\n`;
 
                 // Atualiza o progresso mesmo em caso de erro
@@ -829,8 +843,28 @@ async function enviarMensagens(client) {
         const velocidadeMedia = numeros.length / tempoExecucao;
         console.log(`📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo`);
 
-        const logFooter = `\n=== RESUMO DO ENVIO ===\nTotal de números processados: ${numeros.length}\nTotal de mensagens enviadas: ${enviadas}\nTotal de mensagens não enviadas: ${falhas}\nTempo de execução: ${tempoFormatado}\nVelocidade média: ${velocidadeMedia.toFixed(2)} msg/s\nFinalizado em: ${formatarDataHora(fimProcesso)}\n===============================\n`;
-        writeLog(logDetails + logFooter);
+        const logFooter = `\n=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===
+${numerosComFalha.join('\n')}
+===============================\n`;
+
+        writeLog(logFooter);
+
+        console.log(logFooter);
+
+        console.log(`\n 🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.`);
+        console.log(` 🛑 Para encerrar, pressione ENTER ou feche esta janela.`);
+        console.log(` 💡 Para enviar mais mensagens, edite os arquivos de configuração e reinicie o programa.\n`);
+
+        // Aguardar o pressionamento da tecla ENTER e encerrar o programa
+        await aguardarTeclaParaSair();
+
+        // Encerrar a sessão do WhatsApp Web
+        await client.destroy();
+
+        // Manter o programa em execução e aguardar entrada do usuário
+        await new Promise(() => { });
+
+
 
     } catch (error) {
         console.error(`\n❌ ERRO: ${error.message}`);
