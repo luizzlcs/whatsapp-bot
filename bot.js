@@ -271,15 +271,25 @@ const tempDir = path.join(execDir, 'temp');
 const sessionDir = path.join(execDir, '.wwebjs_auth', 'session');
 const securityDir = path.join(sessionDir, 'security');
 
+// Função para formatar data no formato DD-MM-YYYY-HH:MM:SS para nome de arquivo
+function formatarNomeArquivoData(date) {
+    const dia = String(date.getDate()).padStart(2, '0');
+    const mes = String(date.getMonth() + 1).padStart(2, '0');
+    const ano = date.getFullYear();
+    const horas = String(date.getHours()).padStart(2, '0');
+    const minutos = String(date.getMinutes()).padStart(2, '0');
+    const segundos = String(date.getSeconds()).padStart(2, '0');
+
+    return `${dia}-${mes}-${ano}_${horas}-${minutos}-${segundos}`;
+}
+
 // Caminhos para arquivos
 const numerosPath = path.join(configDir, 'numeros.txt');
 const mensagemPath = path.join(configDir, 'mensagem.txt');
-const logPath = path.join(logsDir, `log_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`);
+const logPath = path.join(logsDir, `log_${formatarNomeArquivoData(new Date())}.txt`);
 const qrCodePath = path.join(tempDir, 'qrcode.png');
 const timeDataPath = path.join(securityDir, 'time.dat');
 const usageDataPath = path.join(securityDir, 'usage.dat');
-
-// [Restante do código original mantido igual, incluindo TimeSecurity, getCurrentInternetTime, getNTPTime, etc.]
 
 // =========================== FUNÇÕES AUXILIARES ===========================
 function formatarDataHora(date) {
@@ -617,7 +627,7 @@ async function checkSubscriptionStatus(timeSecurity) {
         const diasRestantes = Math.ceil((SUBSCRIPTION_END_DATE - currentTime) / (1000 * 60 * 60 * 24));
 
         console.log(`
-    📅 Verificação de Assinatura:
+📅 Verificação de Assinatura:
         • Data atual: ${formattedTime} (Fonte: ${timeSource})
         • Data de expiração: ${formatarDataHora(SUBSCRIPTION_END_DATE)}
         • Dias restantes: ${diasRestantes}`);
@@ -709,8 +719,29 @@ async function enviarMensagens(client) {
         if (!mensagem.trim()) throw new Error('Mensagem vazia');
 
         const inicioProcesso = new Date();
-        const logHeader = `=== REGISTRO DE ENVIO DE MENSAGENS ===\nIniciado em: ${formatarDataHora(inicioProcesso)}\nQuantidade de números: ${numeros.length}\n\n`;
-        writeLog(logHeader);
+        
+        // Cabeçalho do log formatado conforme solicitado
+        let logContent = `
+📅 Verificação de Assinatura:
+        • Data atual: ${formatarDataHora(inicioProcesso)} (Fonte: Google)
+        • Data de expiração: ${formatarDataHora(SUBSCRIPTION_END_DATE)}
+        • Dias restantes: ${Math.ceil((SUBSCRIPTION_END_DATE - inicioProcesso) / (1000 * 60 * 60 * 24))}
+=== BOT DE WHATSAPP ===
+
+🔴 Iniciando WhatsApp Bot...
+✅ Bot do WhatsApp está pronto para enviar mensagens!
+🔍 Verificando arquivos de configuração...
+📄 Lendo números de: ${numerosPath}
+📌 Encontrados ${numeros.length} números para envio.
+📄 Lendo mensagem de: ${mensagemPath}
+📌 Mensagem carregada (${mensagem.length} caracteres).
+📤 Iniciando envio para ${numeros.length} números...
+${'='.repeat(50)}
+📊 PROGRESSO DE ENVIO:
+${'='.repeat(50)}
+`;
+
+        writeLog(logContent);
 
         console.log(`\n🔍 Verificando arquivos de configuração...`);
         console.log(`📄 Lendo números de: ${numerosPath}`);
@@ -829,6 +860,34 @@ async function enviarMensagens(client) {
         const fimProcesso = new Date();
         const tempoExecucao = (fimProcesso - inicioProcesso) / 1000;
         const tempoFormatado = formatarTempo(tempoExecucao);
+        const velocidadeMedia = numeros.length / tempoExecucao;
+
+        // Adiciona o resumo ao conteúdo do log
+        logContent += `
+🔄 Progresso: ██████████████████████████████ 100.0% concluído (0.0% restante)
+📱 Mensagens: ${numeros.length}/${numeros.length} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas
+⏱️ Tempo: ${formatarTempo(tempoExecucao)} decorrido | ~0 segundos restante
+${'='.repeat(50)}
+📋 RESUMO DO ENVIO:
+${'='.repeat(50)}
+✅ Total de números processados: ${numeros.length}
+✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(enviadas / numeros.length * 100).toFixed(1)}%)
+❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)
+⏱️ Tempo total de execução: ${tempoFormatado}
+📄 Log completo salvo em: ${logPath}
+📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo
+
+=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===
+${numerosComFalha.join('\n')}
+===============================
+
+ 🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.
+ 🛑 Para encerrar, pressione ENTER ou feche esta janela.
+ 💡 Para enviar mais mensagens, edite os arquivos de configuração e reinicie o programa.
+`;
+
+        // Escreve todo o conteúdo no arquivo de log
+        fs.writeFileSync(logPath, logContent, 'utf8');
 
         console.log(`\n${'='.repeat(50)}`);
         console.log(`📋 RESUMO DO ENVIO:`);
@@ -838,18 +897,11 @@ async function enviarMensagens(client) {
         console.log(`❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)`);
         console.log(`⏱️ Tempo total de execução: ${tempoFormatado}`);
         console.log(`📄 Log completo salvo em: ${logPath}`);
-
-        // Calcular métricas adicionais
-        const velocidadeMedia = numeros.length / tempoExecucao;
         console.log(`📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo`);
 
-        const logFooter = `\n=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===
-${numerosComFalha.join('\n')}
-===============================\n`;
-
-        writeLog(logFooter);
-
-        console.log(logFooter);
+        console.log(`\n=== ⚠️  NÚMEROS COM FALHA DE ENVIO ===`);
+        console.log(numerosComFalha.join('\n'));
+        console.log(`===============================`);
 
         console.log(`\n 🔄 O programa continuará em execução para manter a sessão do WhatsApp ativa.`);
         console.log(` 🛑 Para encerrar, pressione ENTER ou feche esta janela.`);
@@ -863,8 +915,6 @@ ${numerosComFalha.join('\n')}
 
         // Manter o programa em execução e aguardar entrada do usuário
         await new Promise(() => { });
-
-
 
     } catch (error) {
         console.error(`\n❌ ERRO: ${error.message}`);
