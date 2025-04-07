@@ -203,7 +203,7 @@ function aguardarTeclaParaSair(mensagemErro = null) {
         }
 
         // Timeout de segurança
-        setTimeout(handleExit, 30000);
+        // setTimeout(handleExit, 250000);
     });
 }
 
@@ -691,12 +691,14 @@ function configurarWhatsAppClient() {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-connection-testing',  // Previne problemas de conexão
-                '--disable-renderer-backgrounding'  // Mantém a conexão ativa
+                '--disable-renderer-backgrounding',  // Mantém a conexão ativa
+                '--disable-dev-shm-usage', // Adicione esta linha
+                '--no-zygote'
             ],
-            timeout: 60000  // Aumenta o timeout para 60 segundos
+            timeout: 0  // Aumenta o timeout para 60 segundos
         },
-        takeoverOnConflict: true,  // Permite recuperar sessões existentes
-        takeoverTimeoutMs: 20000  // Tempo para tentar recuperar a sessão
+        takeoverOnConflict: true,
+        sessionTimeout: 86400 // 24h em segundos
     });
 }
 
@@ -719,7 +721,7 @@ async function enviarMensagens(client) {
         if (!mensagem.trim()) throw new Error('Mensagem vazia');
 
         const inicioProcesso = new Date();
-        
+
         // Cabeçalho do log formatado conforme solicitado
         let logContent = `
 📅 Verificação de Assinatura:
@@ -866,14 +868,14 @@ ${'='.repeat(50)}
         logContent += `
 🔄 Progresso: ██████████████████████████████ 100.0% concluído (0.0% restante)
 📱 Mensagens: ${numeros.length}/${numeros.length} enviadas | ✅ ${enviadas} com sucesso | ❌ ${falhas} falhas
-⏱️ Tempo: ${formatarTempo(tempoExecucao)} decorrido | ~0 segundos restante
+⏱️   Tempo: ${formatarTempo(tempoExecucao)} decorrido | ~0 segundos restante
 ${'='.repeat(50)}
 📋 RESUMO DO ENVIO:
 ${'='.repeat(50)}
 ✅ Total de números processados: ${numeros.length}
 ✅ Total de mensagens enviadas com sucesso: ${enviadas} (${(enviadas / numeros.length * 100).toFixed(1)}%)
 ❌ Total de mensagens não enviadas: ${falhas} (${(falhas / numeros.length * 100).toFixed(1)}%)
-⏱️ Tempo total de execução: ${tempoFormatado}
+⏱️   Tempo total de execução: ${tempoFormatado}
 📄 Log completo salvo em: ${logPath}
 📊 Velocidade média: ${velocidadeMedia.toFixed(2)} mensagens/segundo
 
@@ -915,6 +917,7 @@ ${numerosComFalha.join('\n')}
 
         // Manter o programa em execução e aguardar entrada do usuário
         await new Promise(() => { });
+
 
     } catch (error) {
         console.error(`\n❌ ERRO: ${error.message}`);
@@ -999,33 +1002,87 @@ async function main() {
             });
         });
 
-        client.on('ready', async () => {
-            console.log('✅ Bot do WhatsApp está pronto para enviar mensagens!');
-            try {
-                await timeSecurity.recordUsage();
-                await enviarMensagens(client);
-                console.log('\n🟢 Processo de envio concluído!');
-                console.log('ℹ️  O programa continuará em execução.');
-                await timeSecurity.saveTimeCheckpoint();
-                await new Promise(() => { });
-            } catch (error) {
-                registrarErroDetalhado(error, 'Erro durante envio');
-                await aguardarTeclaParaSair('Erro durante o envio de mensagens');
-            }
-        });
+        // client.on('ready', async () => {
+        //     console.log('✅ Bot do WhatsApp está pronto para enviar mensagens!');
+        //     try {
+        //         await timeSecurity.recordUsage();
+        //         await enviarMensagens(client);
+        //         console.log('\n🟢 Processo de envio concluído!');
+        //         console.log('ℹ️  O programa continuará em execução.');
+        //         await timeSecurity.saveTimeCheckpoint();
+        //         // await new Promise(() => { });
+
+        //         console.log('\n🟢 Bot em execução contínua. Pressione CTRL+C para sair');
+
+        //         while (true) {
+        //             try {
+        //                 // Verifica a conexão a cada 10 segundos
+        //                 if (client.pupBrowser && !client.pupBrowser.isConnected()) {
+        //                     console.log('⚠️ Conexão perdida! Reconectando...');
+        //                     await client.initialize();
+        //                 }
+        //                 await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10s
+
+        //             } catch (error) {
+        //                 console.error('Erro no loop principal:', error.message);
+        //                 await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5s antes de retry
+        //             }
+        //         }
+
+        //     } catch (error) {
+        //         registrarErroDetalhado(error, 'Erro durante envio');
+        //         await aguardarTeclaParaSair('Erro durante o envio de mensagens');
+        //     }
+        // });
+
+
 
         client.on('disconnected', async (reason) => {
-            console.error('❌ Desconectado:', reason);
+            console.log('🚨 Desconectado. Motivo:', reason);
+            console.log('⚡ Tentando reconectar em 5 segundos...');
+
+            await new Promise(resolve => setTimeout(resolve, 5000));
             try {
-                await client.destroy();
                 await client.initialize();
-            } catch (error) {
-                registrarErroDetalhado(error, 'Falha na reconexão');
-                await aguardarTeclaParaSair('Falha na conexão com o WhatsApp');
+            } catch (err) {
+                console.log('❌ Falha na reconexão:', err.message);
             }
         });
 
         await client.initialize();
+        client.on('ready', async () => {
+            console.log('✅ Sessão ativa - Iniciando serviços');
+            
+            try {
+                // 1. Envio de mensagens
+                await enviarMensagens(client);
+                
+                // 2. Monitoramento de atividade
+                setInterval(() => {
+                    console.log('📊 Status:', {
+                        uptime: Math.floor(process.uptime() / 60) + ' minutos',
+                        memory: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + 'MB',
+                        status: client.pupBrowser?.isConnected() ? '✅ Conectado' : '❌ Desconectado'
+                    });
+                }, 60000);
+                
+                // 3. Batimentos de presença (modo moderno)
+                const keepAlive = setInterval(async () => {
+                    try {
+                        await client.pupPage.evaluate(() => {
+                            window.Store.Presence.setAvailable();
+                        });
+                        console.log('❤️ Presença atualizada:', new Date().toLocaleTimeString());
+                    } catch (error) {
+                        console.log('⚠️ Falha ao atualizar presença:', error.message);
+                        clearInterval(keepAlive);
+                    }
+                }, 25000);
+                
+            } catch (error) {
+                console.error('❌ Erro na sessão:', error);
+            }
+        });
 
     } catch (err) {
         registrarErroDetalhado(err, 'Erro fatal na inicialização');
