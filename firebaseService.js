@@ -93,30 +93,33 @@ class FirebaseService {
       // Lógica de dispositivos
       const deviceIndex = this.findDeviceIndex(normalizedData.devices, deviceId);
       const isNewDevice = deviceIndex === -1;
+      let currentDevice;
 
-      // Atualiza ou adiciona dispositivo
+      // Cria cópia do array de dispositivos para manipulação
       const updatedDevices = [...normalizedData.devices];
-      const currentDevice = isNewDevice 
-        ? { 
-            device: deviceId, 
-            blocked: false, 
-            email: email,
-            lastAccess: currentTime.toISOString(),
-            expirationDate: normalizedData.expirationDate
-          }
-        : { 
-            ...updatedDevices[deviceIndex], 
-            lastAccess: currentTime.toISOString() 
-          };
 
       if (isNewDevice) {
-        // Verifica limite de dispositivos não bloqueados
-        const activeDevices = updatedDevices.filter(d => !d.blocked).length;
-        if (activeDevices >= normalizedData.maxDevices) {
-          currentDevice.blocked = true;
-        }
+        // Conta dispositivos não bloqueados
+        const activeDevicesCount = updatedDevices.filter(d => !d.blocked).length;
+        
+        // Novo dispositivo será bloqueado se já tiver atingido o limite
+        const willBeBlocked = activeDevicesCount >= normalizedData.maxDevices;
+        
+        currentDevice = { 
+          device: deviceId,
+          blocked: willBeBlocked,
+          email: email,
+          lastAccess: currentTime.toISOString(),
+          expirationDate: normalizedData.expirationDate
+        };
+        
         updatedDevices.push(currentDevice);
       } else {
+        // Atualiza apenas o lastAccess para dispositivo existente
+        currentDevice = { 
+          ...updatedDevices[deviceIndex], 
+          lastAccess: currentTime.toISOString() 
+        };
         updatedDevices[deviceIndex] = currentDevice;
       }
 
@@ -130,7 +133,7 @@ class FirebaseService {
       if (currentDevice.blocked) {
         return { 
           valid: false, 
-          reason: "Dispositivo bloqueado. Limite de dispositivos atingido." 
+          reason: `Limite de ${normalizedData.maxDevices} dispositivos ativos atingido. Este dispositivo foi bloqueado.`
         };
       }
 
@@ -140,7 +143,9 @@ class FirebaseService {
           ...normalizedData,
           expirationDate: expirationDate,
           currentDevice: currentDevice,
-          docId: userDoc.id
+          docId: userDoc.id,
+          activeDevicesCount: updatedDevices.filter(d => !d.blocked).length,
+          maxDevices: normalizedData.maxDevices
         }
       };
 

@@ -67,34 +67,40 @@ class LicenseManager {
       }
 
       // 4. Verificar expiração da licença
-      const expirationCheck = await this.checkExpirationWarning(validation.userData);
+      const expirationCheck = await this.checkExpirationWarning(
+        validation.userData
+      );
       if (!expirationCheck.continue) {
-        return { isValid: false, reason: "Usuário cancelou devido à expiração próxima" };
+        return {
+          isValid: false,
+          reason: "Usuário cancelou devido à expiração próxima",
+        };
       }
 
       // 5. Mostrar informações da licença
-      const userData = validation.userData;
       console.log("\n✅ Licença válida! Detalhes:");
-      console.log(`👤 Nome: ${userData.name || userData.nome}`);
-      console.log(`📧 Email: ${userData.email}`);
       console.log(
-        `📅 Expiração: ${formatarDataHora(new Date(userData.expirationDate))}`
+        `👤 Nome: ${validation.userData.name || validation.userData.nome}`
+      );
+      console.log(`📧 Email: ${validation.userData.email}`);
+      console.log(
+        `📅 Expiração: ${formatarDataHora(
+          new Date(validation.userData.expirationDate)
+        )}`
       );
       console.log(`⏳ Dias restantes: ${expirationCheck.daysLeft}`);
-      console.log(`💻 Dispositivos permitidos: ${userData.maxDevices}`);
       console.log(
-        `🔄 Último acesso: ${
-          userData.lastAccess
-            ? formatarDataHora(new Date(userData.lastAccess))
-            : "Nunca"
+        `💻 Dispositivos permitidos: ${validation.userData.maxDevices}`
+      );
+      console.log(
+        `🔓 Dispositivo atual: ${
+          validation.userData.currentDevice.blocked ? "Bloqueado" : "Ativo"
         }`
       );
       console.log(
-        `⚙️ Recursos: ${
-          userData.allowedFeatures
-            ? userData.allowedFeatures.join(", ")
-            : "Todos"
-        }`
+        `🔄 Último acesso: ${formatarDataHora(
+          new Date(validation.userData.currentDevice.lastAccess)
+        )}`
       );
 
       // 6. Salvar email na sessão se não existir
@@ -105,8 +111,8 @@ class LicenseManager {
       return {
         isValid: true,
         userData: {
-          ...userData,
-          daysLeft: expirationCheck.daysLeft
+          ...validation.userData,
+          daysLeft: expirationCheck.daysLeft,
         },
         deviceId: deviceId,
       };
