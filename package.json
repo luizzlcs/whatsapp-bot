@@ -32,7 +32,9 @@
     ]
   },
   "dependencies": {
+    "@firebase/firestore": "^4.7.10",
     "axios": "^0.27.2",
+    "firebase": "^11.6.0",
     "puppeteer": "^21.11.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
