@@ -71,15 +71,14 @@ class FirebaseService {
 
   async validateLicense(email, deviceId) {
     try {
-      const currentTime = await this.getCurrentInternetTime();
-
       // Consulta para encontrar o documento pelo email
+      const currentTime = await this.getCurrentInternetTime();
       const usersRef = collection(this.db, "botWhatsApp");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        return { valid: false, reason: "Email não cadastrado" };
+        return { valid: false, userData: null, reason: "Email não cadastrado" };
       }
 
       // Pega o primeiro documento encontrado (email deve ser único)
@@ -96,19 +95,31 @@ class FirebaseService {
       };
 
       // Verificar data de expiração
-      const expirationDate = new Date(normalizedData.expirationDate);
+      const expirationDate = new Date(userData.expirationDate);
       if (currentTime > expirationDate) {
-        return { valid: false, reason: "Licença expirada" };
+        return {
+          valid: false,
+          userData: null,
+          reason: `Sua licença expirou em ${expirationDate.toLocaleDateString()}`,
+        };
       }
 
       // Verificar status ativo
       if (!normalizedData.active) {
-        return { valid: false, reason: "Licença inativa" };
+        return {
+          valid: false,
+          userData: null,
+          reason: "Sua licença está inativa.",
+        };
       }
 
       // Verificar bloqueio
       if (normalizedData.blocked) {
-        return { valid: false, reason: "Licença bloqueada" };
+        return {
+          valid: false,
+          userData: null,
+          reason: "Sua licença está bloqueada. Entre em contato com o suporte.",
+        };
       }
 
       // Verificar dispositivos
