@@ -2,6 +2,7 @@ const { initializeApp } = require("firebase/app");
 const {
   getFirestore,
   doc,
+  getDoc, // Adicionando a importação que estava faltando
   updateDoc,
   collection,
   query,
@@ -28,7 +29,7 @@ class FirebaseService {
 
   // Função auxiliar para encontrar dispositivo no array
   findDeviceIndex(devicesArray, deviceId) {
-    return devicesArray.findIndex(device => device.device === deviceId);
+    return devicesArray.findIndex(device => device.deviceId === deviceId);
   }
 
   async getCurrentInternetTime() {
@@ -61,116 +62,96 @@ class FirebaseService {
   async validateLicense(email, deviceId) {
     try {
       const currentTime = await this.getCurrentInternetTime();
-      const usersRef = collection(this.db, "botWhatsApp");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
+      
+      // 1. Buscar usuário pelo email (usando email como ID do documento)
+      const userRef = doc(this.db, "botWhatsApp", email);
+      const userDoc = await getDoc(userRef);
 
-      if (querySnapshot.empty) {
+      if (!userDoc.exists()) {
         return { valid: false, reason: "Email não cadastrado" };
       }
 
-      const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
 
-      // Normalização dos dados
-      const normalizedData = {
-        ...userData,
-        maxDevices: this.normalizeMaxDevices(userData.maxDevices),
-        active: userData.active === true || userData.active === "true",
-        devices: Array.isArray(userData.devices) ? userData.devices : []
-      };
-
-      // Verificações básicas
-      if (!normalizedData.active) {
-        return { valid: false, reason: "Licença inativa" };
+      // 2. Verificações básicas
+      if (!userData.active) {
+        return { valid: false, reason: "Conta inativa" };
       }
 
-      const expirationDate = new Date(normalizedData.expirationDate);
+      const expirationDate = new Date(userData.expirationDate);
       if (currentTime > expirationDate) {
         return { valid: false, reason: "Licença expirada" };
       }
 
-      // Lógica de dispositivos
-      const deviceIndex = this.findDeviceIndex(normalizedData.devices, deviceId);
+      // 3. Gerenciamento de dispositivos
+      const devices = Array.isArray(userData.devices) ? userData.devices : [];
+      const deviceIndex = this.findDeviceIndex(devices, deviceId);
       const isNewDevice = deviceIndex === -1;
+
+      // 4. Atualizar/Criar dispositivo
+      const updatedDevices = [...devices];
       let currentDevice;
 
-      // Cria cópia do array de dispositivos para manipulação
-      const updatedDevices = [...normalizedData.devices];
-
       if (isNewDevice) {
-        // Conta dispositivos não bloqueados
-        const activeDevicesCount = updatedDevices.filter(d => !d.blocked).length;
-        
-        // Novo dispositivo será bloqueado se já tiver atingido o limite
-        const willBeBlocked = activeDevicesCount >= normalizedData.maxDevices;
-        
-        currentDevice = { 
-          device: deviceId,
-          blocked: willBeBlocked,
-          email: email,
+        // Contar dispositivos ativos
+        const activeDevices = devices.filter(d => !d.blocked).length;
+        const willBlock = activeDevices >= userData.maxDevices;
+
+        currentDevice = {
+          deviceId,
+          blocked: willBlock,
           lastAccess: currentTime.toISOString(),
-          expirationDate: normalizedData.expirationDate
+          name: `Dispositivo ${devices.length + 1}`
         };
-        
+
         updatedDevices.push(currentDevice);
       } else {
-        // Atualiza apenas o lastAccess para dispositivo existente
-        currentDevice = { 
-          ...updatedDevices[deviceIndex], 
-          lastAccess: currentTime.toISOString() 
+        // Atualizar dispositivo existente
+        currentDevice = {
+          ...devices[deviceIndex],
+          lastAccess: currentTime.toISOString()
         };
         updatedDevices[deviceIndex] = currentDevice;
       }
 
-      // Atualiza no Firebase
-      await updateDoc(userDoc.ref, {
+      // 5. Atualizar no Firebase
+      await updateDoc(userRef, {
         devices: updatedDevices,
         lastAccess: currentTime.toISOString()
       });
 
-      // Verifica se o dispositivo atual está bloqueado
+      // 6. Validar acesso
       if (currentDevice.blocked) {
         return { 
           valid: false, 
-          reason: `Limite de ${normalizedData.maxDevices} dispositivos ativos atingido. Este dispositivo foi bloqueado.`
+          reason: `Limite de ${userData.maxDevices} dispositivos ativos atingido.` 
         };
       }
 
       return {
         valid: true,
         userData: {
-          ...normalizedData,
-          expirationDate: expirationDate,
-          currentDevice: currentDevice,
-          docId: userDoc.id,
-          activeDevicesCount: updatedDevices.filter(d => !d.blocked).length,
-          maxDevices: normalizedData.maxDevices
+          ...userData,
+          currentDevice,
+          activeDevices: updatedDevices.filter(d => !d.blocked).length,
+          maxDevices: userData.maxDevices,
+          expirationDate: expirationDate
         }
       };
 
     } catch (error) {
       console.error("Erro na validação:", error);
-      return { valid: false, reason: "Erro na validação" };
+      return { valid: false, reason: "Erro no servidor" };
     }
-  }
-
-  normalizeMaxDevices(value) {
-    if (value === undefined || value === null) return 1;
-    if (typeof value === 'number') return Math.max(1, value);
-    const parsed = parseInt(value);
-    return isNaN(parsed) ? 1 : Math.max(1, parsed);
   }
 
   async getUserByEmail(email) {
     try {
-      const usersRef = collection(this.db, "botWhatsApp");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
+      const userRef = doc(this.db, "botWhatsApp", email);
+      const userDoc = await getDoc(userRef);
       
-      if (querySnapshot.empty) return null;
+      if (!userDoc.exists()) return null;
       
-      const userDoc = querySnapshot.docs[0];
       return {
         ...userDoc.data(),
         docId: userDoc.id

@@ -34,11 +34,14 @@
   "dependencies": {
     "@firebase/firestore": "^4.7.10",
     "axios": "^0.27.2",
+    "crypto": "^1.0.1",
     "firebase": "^11.6.0",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
     "puppeteer": "^21.11.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.23.2"
+    "whatsapp-web.js": "^1.27.0"
   },
   "devDependencies": {
     "pkg": "^5.8.1"

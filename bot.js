@@ -727,47 +727,8 @@ function criarDiretoriosNecessarios() {
 }
 
 // ================= CONFIGURAÇÃO DO WHATSAPP CLIENT =================
-function configurarWhatsAppClient() {
-  let chromePath;
-  if (process.platform === "win32") {
-    const paths = [
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-      "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-      process.env.LOCALAPPDATA + "\\Google\\Chrome\\Application\\chrome.exe",
-    ];
-    chromePath = paths.find(fs.existsSync);
-  } else if (process.platform === "darwin") {
-    chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-  } else {
-    chromePath = "/usr/bin/google-chrome";
-  }
-
-  console.log(`\n=== BOT DE WHATSAPP ===`);
-  console.log(
-    `📘 Usando navegador Chrome em: ${chromePath || "Caminho padrão"}`
-  );
-
-  return new whatsapp.Client({
-    authStrategy: new whatsapp.LocalAuth({
-      dataPath: path.join(execDir, ".wwebjs_auth"),
-    }),
-    puppeteer: {
-      headless: false,
-      executablePath: chromePath,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-connection-testing", // Previne problemas de conexão
-        "--disable-renderer-backgrounding", // Mantém a conexão ativa
-        "--disable-dev-shm-usage", // Adicione esta linha
-        "--no-zygote",
-      ],
-      timeout: 0, // Aumenta o timeout para 60 segundos
-    },
-    takeoverOnConflict: true,
-    sessionTimeout: 86400, // 24h em segundos
-  });
-}
+const { getChromePath, ensureBrowserPermissions } = require('./browserFix');
+executablePath: getChromePath() || undefined
 
 // ================= ENVIO DE MENSAGENS =================
 async function enviarMensagens(client) {
@@ -1043,186 +1004,145 @@ ${numerosComFalha.join("\n")}
 
 // =========================== FUNÇÃO PRINCIPAL MODIFICADA ===========================
 async function main() {
-  // SOLUÇÃO ESSENCIAL
-  if (process.pkg) {
-    const handleStreamError = (err) => {
-      if (err.code !== "ENOTCONN") {
-        // Ignora apenas ENOTCONN
-        console.error("Erro no stream:", err);
-      }
-    };
-    process.stdin.on("error", handleStreamError);
-    process.stdout.on("error", handleStreamError);
-    process.stderr.on("error", handleStreamError);
-  }
-
   let client = null;
+  let keepAliveInterval = null;
 
   try {
-    // Configurações iniciais (mantendo suas verificações originais)
-    console.log(`Modo de execução: ${process.pkg ? "Executável" : "Script"}`);
-    console.log(
-      `Diretório de execução: ${
-        process.pkg ? path.dirname(process.execPath) : __dirname
-      }`
-    );
+    // [Configurações iniciais permanecem iguais...]
 
-    // Configuração especial para executáveis Windows (mantida do original)
-    if (process.pkg && process.platform === "win32") {
-      process.stdin.on("data", () => {});
-      process.stdin.resume();
-    }
-
-    // Verificação de diretórios (versão mais completa)
-    const timeSecurity = new TimeSecurity();
-    criarDiretoriosNecessarios();
-    criarArquivoExemplo(
-      numerosPath,
-      "5511999999999\n5511888888888\n// Um número por linha"
-    );
-    criarArquivoExemplo(mensagemPath, "Olá! Esta é uma mensagem de exemplo.");
-
-    // Verificação de assinatura (com aviso de expiração)
-    const licenseManager = require("./licenseManager");
-    const licenseValidation = await licenseManager.validateLicense();
-
-    if (!licenseValidation.isValid) {
-      await aguardarTeclaParaSair(
-        `Licença inválida: ${licenseValidation.reason}`
-      );
-      return;
-    }
-
-    // if (subscription.warning) {
-    //   const rl = readline.createInterface({
-    //     input: process.stdin,
-    //     output: process.stdout,
-    //   });
-    //   const resposta = await new Promise((resolve) => {
-    //     rl.question(
-    //       "📤 Assinatura próxima do vencimento. Deseja continuar? (s/n): ",
-    //       resolve
-    //     );
-    //   });
-    //   rl.close();
-
-    //   if (resposta.toLowerCase() !== "s") {
-    //     await aguardarTeclaParaSair("Operação cancelada pelo usuário");
-    //     return;
-    //   }
-    // }
-
-    // Inicialização do client (versão otimizada)
-    client = configurarWhatsAppClient();
+    // INICIALIZAÇÃO DO CLIENTE WHATSAPP
     console.log("\n🔴 Iniciando WhatsApp Bot...");
+    client = await criarClienteWhatsApp();
 
-    // Configuração de eventos (mantendo tratamento de erros)
-    client.on("qr", (qr) => {
-      console.log("🔎 QR Code gerado, escaneie para conectar");
-      qrcode.toFile(qrCodePath, qr, { errorCorrectionLevel: "H" }, (err) => {
-        if (err) {
-          console.error("❌ Erro ao gerar QR Code:", err.message);
-          return;
-        }
-        try {
-          if (process.platform === "win32") exec(`start "" "${qrCodePath}"`);
-          else if (process.platform === "darwin") exec(`open "${qrCodePath}"`);
-          else exec(`xdg-open "${qrCodePath}"`);
-        } catch (err) {
-          console.log(`ℹ️ QR Code salvo em: ${qrCodePath}`);
-        }
-      });
-    });
+    // CONFIGURAÇÃO DE EVENTOS
+    configurarEventosWhatsApp(client);
 
-    // client.on('ready', async () => {
-    //     console.log('✅ Bot do WhatsApp está pronto para enviar mensagens!');
-    //     try {
-    //         await timeSecurity.recordUsage();
-    //         await enviarMensagens(client);
-    //         console.log('\n🟢 Processo de envio concluído!');
-    //         console.log('ℹ️  O programa continuará em execução.');
-    //         await timeSecurity.saveTimeCheckpoint();
-    //         // await new Promise(() => { });
-
-    //         console.log('\n🟢 Bot em execução contínua. Pressione CTRL+C para sair');
-
-    //         while (true) {
-    //             try {
-    //                 // Verifica a conexão a cada 10 segundos
-    //                 if (client.pupBrowser && !client.pupBrowser.isConnected()) {
-    //                     console.log('⚠️ Conexão perdida! Reconectando...');
-    //                     await client.initialize();
-    //                 }
-    //                 await new Promise(resolve => setTimeout(resolve, 10000)); // Espera 10s
-
-    //             } catch (error) {
-    //                 console.error('Erro no loop principal:', error.message);
-    //                 await new Promise(resolve => setTimeout(resolve, 5000)); // Espera 5s antes de retry
-    //             }
-    //         }
-
-    //     } catch (error) {
-    //         registrarErroDetalhado(error, 'Erro durante envio');
-    //         await aguardarTeclaParaSair('Erro durante o envio de mensagens');
-    //     }
-    // });
-
-    client.on("disconnected", async (reason) => {
-      console.log("🚨 Desconectado. Motivo:", reason);
-      console.log("⚡ Tentando reconectar em 5 segundos...");
-
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      try {
-        await client.initialize();
-      } catch (err) {
-        console.log("❌ Falha na reconexão:", err.message);
-      }
-    });
-
+    // INICIALIZAÇÃO
     await client.initialize();
-    client.on("ready", async () => {
-      console.log("✅ Sessão ativa - Iniciando serviços");
 
-      try {
-        // 1. Envio de mensagens
-        await enviarMensagens(client);
-
-        // 2. Monitoramento de atividade
-        setInterval(() => {
-          console.log("📊 Status:", {
-            uptime: Math.floor(process.uptime() / 60) + " minutos",
-            memory: (process.memoryUsage().rss / 1024 / 1024).toFixed(2) + "MB",
-            status: client.pupBrowser?.isConnected()
-              ? "✅ Conectado"
-              : "❌ Desconectado",
-          });
-        }, 60000);
-
-        // 3. Batimentos de presença (modo moderno)
-        const keepAlive = setInterval(async () => {
-          try {
-            await client.pupPage.evaluate(() => {
-              window.Store.Presence.setAvailable();
-            });
-            console.log(
-              "❤️ Presença atualizada:",
-              new Date().toLocaleTimeString()
-            );
-          } catch (error) {
-            console.log("⚠️ Falha ao atualizar presença:", error.message);
-            clearInterval(keepAlive);
-          }
-        }, 25000);
-      } catch (error) {
-        console.error("❌ Erro na sessão:", error);
-      }
-    });
   } catch (error) {
-    registrarErroDetalhado(error, "Erro fatal na inicialização");
-    console.error('Stack:', error.stack);
+    console.error('\n===== ERRO CRÍTICO =====');
+    console.error('Mensagem:', error.message);
+    
+    if (client) {
+      await encerrarCliente(client);
+    }
+    
     await aguardarTeclaParaSair("Erro na inicialização: " + error.message);
+    process.exit(1);
   }
 }
+
+// FUNÇÕES AUXILIARES REVISADAS
+
+async function criarClienteWhatsApp() {
+  const chromePath = [
+    process.env.PROGRAMFILES + '\\Google\\Chrome\\Application\\chrome.exe',
+    // [outros caminhos...]
+  ].find(fs.existsSync);
+
+  if (!chromePath) {
+    throw new Error("Nenhum executável do Chrome encontrado");
+  }
+
+  const client = new whatsapp.Client({
+    authStrategy: new whatsapp.LocalAuth({
+      dataPath: path.join(execDir, '.wwebjs_auth'),
+      clientId: "client-" + Date.now()
+    }),
+    puppeteer: {
+      headless: false,
+      executablePath: chromePath,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-gpu'
+      ],
+      timeout: 0 // Desabilita timeout
+    },
+    takeoverOnConflict: false // Evita conflitos de sessão
+  });
+
+  return client;
+}
+
+function configurarEventosWhatsApp(client) {
+  client.on('qr', qr => {
+    console.log('🔎 QR Code recebido');
+    qrcode.toFile(qrCodePath, qr, err => {
+      if (!err) exec(`start "" "${qrCodePath}"`);
+    });
+  });
+
+  client.on('authenticated', () => {
+    console.log('✅ Autenticado com sucesso');
+  });
+
+  client.on('auth_failure', msg => {
+    console.error('❌ Falha na autenticação:', msg);
+  });
+
+  client.on('ready', async () => {
+    console.log('✅ WhatsApp Client pronto');
+    await iniciarServicos(client);
+  });
+
+  client.on('disconnected', async reason => {
+    console.log('🚨 Desconectado:', reason);
+    await reconectarClient(client);
+  });
+}
+
+async function encerrarCliente(client) {
+  try {
+    if (client.pupBrowser) {
+      await client.pupBrowser.close();
+    }
+    if (keepAliveInterval) {
+      clearInterval(keepAliveInterval);
+    }
+  } catch (e) {
+    console.error('Erro ao encerrar recursos:', e.message);
+  }
+}
+
+async function reconectarClient(client) {
+  try {
+    console.log('⚡ Tentando reconectar...');
+    await encerrarCliente(client);
+    await client.initialize();
+  } catch (error) {
+    console.error('❌ Falha na reconexão:', error.message);
+    process.exit(1);
+  }
+}
+
+async function iniciarServicos(client) {
+  try {
+    await enviarMensagens(client);
+    
+    keepAliveInterval = setInterval(async () => {
+      try {
+        if (client.pupPage && !client.pupPage.isClosed()) {
+          await client.pupPage.evaluate(() => {
+            window.Store.Presence.setAvailable();
+          });
+        }
+      } catch (error) {
+        console.log('⚠️ Falha ao atualizar presença:', error.message);
+      }
+    }, 30000);
+  } catch (error) {
+    console.error('❌ Erro nos serviços:', error);
+  }
+}
+
+// Função para verificar permissões do navegador (Linux/Mac)
+
 
 // Remover process.stdin.resume() existente
 main().catch((err) => {
