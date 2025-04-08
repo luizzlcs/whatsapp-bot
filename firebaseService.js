@@ -2,7 +2,6 @@ const { initializeApp } = require("firebase/app");
 const {
   getFirestore,
   doc,
-  getDoc,
   updateDoc,
   collection,
   query,
@@ -27,17 +26,20 @@ class FirebaseService {
     this.db = getFirestore(this.app);
   }
 
+  // Função auxiliar para encontrar dispositivo no array
+  findDeviceIndex(devicesArray, deviceId) {
+    return devicesArray.findIndex(device => device.device === deviceId);
+  }
+
   async getCurrentInternetTime() {
     try {
-      const response = await axios.get("https://time.google.com/api/v1/time", {
+      const response = await axios.get("https://worldtimeapi.org/api/ip", {
         timeout: 8000,
       });
       return new Date(response.data.utc_datetime);
     } catch (error) {
-      console.warn(
-        "⚠️  Falha ao obter tempo online, usando tempo local com aviso"
-      );
-      return new Date(); // Fallback para tempo local
+      console.warn("⚠️ Falha ao obter tempo online, usando tempo local com aviso");
+      return new Date();
     }
   }
 
@@ -56,95 +58,80 @@ class FirebaseService {
       .substring(0, 32);
   }
 
-  normalizeMaxDevices(value) {
-    if (typeof value === "number" && Number.isInteger(value)) {
-      return value;
-    }
-
-    const parsed = parseInt(value);
-    if (!isNaN(parsed)) {
-      return parsed;
-    }
-
-    return 1;
-  }
-
   async validateLicense(email, deviceId) {
     try {
-      // Consulta para encontrar o documento pelo email
       const currentTime = await this.getCurrentInternetTime();
       const usersRef = collection(this.db, "botWhatsApp");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        return { valid: false, userData: null, reason: "Email não cadastrado" };
+        return { valid: false, reason: "Email não cadastrado" };
       }
 
-      // Pega o primeiro documento encontrado (email deve ser único)
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
 
-      // Normaliza os campos para garantir tipos corretos
+      // Normalização dos dados
       const normalizedData = {
         ...userData,
-        blocked: userData.blocked === true || userData.blocked === "true",
         maxDevices: this.normalizeMaxDevices(userData.maxDevices),
         active: userData.active === true || userData.active === "true",
-        devices: Array.isArray(userData.devices) ? userData.devices : [],
+        devices: Array.isArray(userData.devices) ? userData.devices : []
       };
 
-      // Verificar data de expiração
-      const expirationDate = new Date(userData.expirationDate);
-      if (currentTime > expirationDate) {
-        return {
-          valid: false,
-          userData: null,
-          reason: `Sua licença expirou em ${expirationDate.toLocaleDateString()}`,
-        };
-      }
-
-      // Verificar status ativo
+      // Verificações básicas
       if (!normalizedData.active) {
-        return {
-          valid: false,
-          userData: null,
-          reason: "Sua licença está inativa.",
-        };
+        return { valid: false, reason: "Licença inativa" };
       }
 
-      // Verificar bloqueio
-      if (normalizedData.blocked) {
-        return {
-          valid: false,
-          userData: null,
-          reason: "Sua licença está bloqueada. Entre em contato com o suporte.",
-        };
+      const expirationDate = new Date(normalizedData.expirationDate);
+      if (currentTime > expirationDate) {
+        return { valid: false, reason: "Licença expirada" };
       }
 
-      // Verificar dispositivos
-      const isNewDevice = !normalizedData.devices.includes(deviceId);
+      // Lógica de dispositivos
+      const deviceIndex = this.findDeviceIndex(normalizedData.devices, deviceId);
+      const isNewDevice = deviceIndex === -1;
 
-      if (
-        isNewDevice &&
-        normalizedData.devices.length >= normalizedData.maxDevices
-      ) {
-        // Atualizar status para bloqueado
-        await updateDoc(userDoc.ref, { blocked: true });
-        return { valid: false, reason: "Limite de dispositivos excedido" };
-      }
+      // Atualiza ou adiciona dispositivo
+      const updatedDevices = [...normalizedData.devices];
+      const currentDevice = isNewDevice 
+        ? { 
+            device: deviceId, 
+            blocked: false, 
+            email: email,
+            lastAccess: currentTime.toISOString(),
+            expirationDate: normalizedData.expirationDate
+          }
+        : { 
+            ...updatedDevices[deviceIndex], 
+            lastAccess: currentTime.toISOString() 
+          };
 
-      // Registrar novo dispositivo se necessário
       if (isNewDevice) {
-        await updateDoc(userDoc.ref, {
-          devices: [...normalizedData.devices, deviceId],
-          lastAccess: currentTime.toISOString(),
-        });
+        // Verifica limite de dispositivos não bloqueados
+        const activeDevices = updatedDevices.filter(d => !d.blocked).length;
+        if (activeDevices >= normalizedData.maxDevices) {
+          currentDevice.blocked = true;
+        }
+        updatedDevices.push(currentDevice);
       } else {
-        // Atualizar último acesso
-        await updateDoc(userDoc.ref, {
-          lastAccess: currentTime.toISOString(),
-        });
+        updatedDevices[deviceIndex] = currentDevice;
+      }
+
+      // Atualiza no Firebase
+      await updateDoc(userDoc.ref, {
+        devices: updatedDevices,
+        lastAccess: currentTime.toISOString()
+      });
+
+      // Verifica se o dispositivo atual está bloqueado
+      if (currentDevice.blocked) {
+        return { 
+          valid: false, 
+          reason: "Dispositivo bloqueado. Limite de dispositivos atingido." 
+        };
       }
 
       return {
@@ -152,14 +139,22 @@ class FirebaseService {
         userData: {
           ...normalizedData,
           expirationDate: expirationDate,
-          currentDeviceId: deviceId,
-          docId: userDoc.id, // Adiciona o ID do documento
-        },
+          currentDevice: currentDevice,
+          docId: userDoc.id
+        }
       };
+
     } catch (error) {
-      console.error("Erro na validação de licença:", error);
+      console.error("Erro na validação:", error);
       return { valid: false, reason: "Erro na validação" };
     }
+  }
+
+  normalizeMaxDevices(value) {
+    if (value === undefined || value === null) return 1;
+    if (typeof value === 'number') return Math.max(1, value);
+    const parsed = parseInt(value);
+    return isNaN(parsed) ? 1 : Math.max(1, parsed);
   }
 
   async getUserByEmail(email) {
@@ -167,12 +162,14 @@ class FirebaseService {
       const usersRef = collection(this.db, "botWhatsApp");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        return null;
-      }
-
-      return querySnapshot.docs[0].data();
+      
+      if (querySnapshot.empty) return null;
+      
+      const userDoc = querySnapshot.docs[0];
+      return {
+        ...userDoc.data(),
+        docId: userDoc.id
+      };
     } catch (error) {
       console.error("Erro ao buscar usuário:", error);
       return null;
