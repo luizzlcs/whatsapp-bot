@@ -24,7 +24,7 @@ class FirebaseService {
   }
 
   findDevice(devicesArray, deviceId) {
-    return devicesArray.find(device => device.device === deviceId);
+    return devicesArray?.find(device => device.device === deviceId) || null;
   }
 
   async getCurrentInternetTime() {
@@ -53,6 +53,10 @@ class FirebaseService {
       .digest("hex");
   }
 
+  countActiveDevices(devices) {
+    return devices?.filter(d => !d.blocked).length || 0;
+  }
+
   async validateLicense(email, deviceId) {
     try {
       const currentTime = await this.getCurrentInternetTime();
@@ -78,40 +82,43 @@ class FirebaseService {
       // Gerenciamento de dispositivos
       const devices = userData.devices || [];
       const existingDevice = this.findDevice(devices, deviceId);
+      const activeDevicesCount = this.countActiveDevices(devices);
       const isNewDevice = !existingDevice;
 
-      // Atualizar/Criar registro do dispositivo
-      const updatedDevices = [...devices];
-      let currentDevice;
-
+      // Lógica de controle de dispositivos
       if (isNewDevice) {
-        // Verificar limite de dispositivos
-        const activeDevices = devices.filter(d => !d.blocked).length;
-        if (activeDevices >= userData.maxDevices) {
+        // Novo dispositivo - verificar limite
+        if (activeDevicesCount >= userData.maxDevices) {
           return { 
             valid: false, 
-            reason: `Limite de ${userData.maxDevices} dispositivos atingido` 
+            reason: `Limite de ${userData.maxDevices} dispositivos ativos atingido` 
           };
         }
 
-        currentDevice = {
+        // Adicionar novo dispositivo como ativo
+        const newDevice = {
           device: deviceId,
           blocked: false,
-          lastAccess: currentTime.toISOString()
+          lastAccess: currentTime.toISOString(),
+          firstAccess: currentTime.toISOString()
         };
-        updatedDevices.push(currentDevice);
+        devices.push(newDevice);
       } else {
-        currentDevice = {
-          ...existingDevice,
-          lastAccess: currentTime.toISOString()
-        };
-        const deviceIndex = devices.findIndex(d => d.device === deviceId);
-        updatedDevices[deviceIndex] = currentDevice;
+        // Dispositivo existente
+        if (existingDevice.blocked) {
+          return { 
+            valid: false, 
+            reason: "Dispositivo bloqueado. Limite de dispositivos atingido" 
+          };
+        }
+
+        // Atualizar apenas o último acesso
+        existingDevice.lastAccess = currentTime.toISOString();
       }
 
       // Atualizar no Firestore
       await updateDoc(userRef, {
-        devices: updatedDevices,
+        devices: devices,
         lastAccess: currentTime.toISOString()
       });
 
@@ -120,7 +127,13 @@ class FirebaseService {
         userData: {
           ...userData,
           expirationDate: expirationDate,
-          currentDevice: currentDevice
+          currentDevice: existingDevice || {
+            device: deviceId,
+            blocked: false,
+            lastAccess: currentTime.toISOString()
+          },
+          activeDevices: this.countActiveDevices(devices),
+          maxDevices: userData.maxDevices
         }
       };
 
@@ -137,7 +150,12 @@ class FirebaseService {
       
       if (!userDoc.exists()) return null;
       
-      return userDoc.data();
+      const userData = userDoc.data();
+      return {
+        ...userData,
+        activeDevices: this.countActiveDevices(userData.devices),
+        maxDevices: userData.maxDevices
+      };
     } catch (error) {
       console.error("Erro ao buscar licença:", error);
       return null;

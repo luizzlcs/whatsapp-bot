@@ -11,6 +11,7 @@ class LicenseManager {
       "session"
     );
     this.emailPath = path.join(this.sessionDir, "email.json");
+    this.devicePath = path.join(this.sessionDir, "device.json");
   }
 
   async ensureSessionDir() {
@@ -34,17 +35,40 @@ class LicenseManager {
     }
   }
 
-  async saveEmail(email) {
+  async getStoredDeviceId() {
     try {
       await this.ensureSessionDir();
+      if (fs.existsSync(this.devicePath)) {
+        const data = fs.readFileSync(this.devicePath, "utf8");
+        const { deviceId } = JSON.parse(data);
+        return deviceId;
+      }
+      return null;
+    } catch (error) {
+      console.error("Erro ao ler dispositivo salvo:", error);
+      return null;
+    }
+  }
+
+  async saveSessionData(email, deviceId) {
+    try {
+      await this.ensureSessionDir();
+      
       fs.writeFileSync(
         this.emailPath,
         JSON.stringify({ email }),
         "utf8"
       );
+      
+      fs.writeFileSync(
+        this.devicePath,
+        JSON.stringify({ deviceId }),
+        "utf8"
+      );
+      
       return true;
     } catch (error) {
-      console.error("Erro ao salvar email:", error);
+      console.error("Erro ao salvar dados da sessão:", error);
       return false;
     }
   }
@@ -74,8 +98,12 @@ class LicenseManager {
         }
       }
 
-      // 2. Gerar ID do dispositivo
-      const deviceId = firebaseService.generateDeviceId();
+      // 2. Gerar/recuperar ID do dispositivo
+      let deviceId = await this.getStoredDeviceId();
+      if (!deviceId) {
+        deviceId = firebaseService.generateDeviceId();
+      }
+      
       console.log("🖥️  ID do dispositivo:", deviceId);
 
       // 3. Validar licença no Firebase
@@ -92,14 +120,15 @@ class LicenseManager {
         return { valid: false, reason: "Usuário cancelou devido à expiração" };
       }
 
-      // 5. Salvar email se for novo
-      if (!(await this.getStoredEmail())) {
-        await this.saveEmail(email);
-      }
+      // 5. Salvar dados da sessão
+      await this.saveSessionData(email, deviceId);
 
       return {
         valid: true,
-        userData: validation.userData,
+        userData: {
+          ...validation.userData,
+          daysLeft: expirationCheck.daysLeft
+        },
         deviceId: deviceId
       };
 
@@ -139,6 +168,22 @@ class LicenseManager {
     }
 
     return { continue: true, daysLeft };
+  }
+
+  async getActiveDevices(email) {
+    try {
+      const licenseData = await firebaseService.getUserLicense(email);
+      if (!licenseData) return null;
+      
+      return {
+        active: licenseData.devices?.filter(d => !d.blocked) || [],
+        blocked: licenseData.devices?.filter(d => d.blocked) || [],
+        maxDevices: licenseData.maxDevices
+      };
+    } catch (error) {
+      console.error("Erro ao obter dispositivos:", error);
+      return null;
+    }
   }
 }
 

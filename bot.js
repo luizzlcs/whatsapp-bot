@@ -45,6 +45,7 @@ const dgram = require("dgram");
 const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
 
+
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -267,6 +268,14 @@ async function reconectarClient(client) {
 
 // ==================== ENVIO DE MENSAGENS ====================
 async function enviarMensagens(client) {
+
+  // Verificar novamente a licença antes de enviar mensagens
+  const licenseCheck = await licenseManager.validateLicense();
+  if (!licenseCheck.valid) {
+    console.error(`❌ Licença inválida durante o envio: ${licenseCheck.reason}`);
+    return;
+  }
+
   const numerosPath = path.join(configDir, "numeros.txt");
   const mensagemPath = path.join(configDir, "mensagem.txt");
 
@@ -320,6 +329,8 @@ ${falhas > 0 ? `📝 Números com falha:\n${numerosComFalha.join("\n")}` : ''}
 // ==================== FUNÇÃO PRINCIPAL ====================
 async function main() {
   try {
+
+    // =============  VERIFICAÇÃO DE LICENÇA =============
     console.log("🔍 Verificando licença...");
     
     // 1. Validar licença
@@ -334,12 +345,13 @@ async function main() {
     console.log(`👤 Nome: ${licenseCheck.userData.name}`);
     console.log(`📧 Email: ${licenseCheck.userData.email}`);
     console.log(`📅 Expiração: ${licenseCheck.userData.expirationDate.toLocaleDateString()}`);
-    console.log(`💻 Dispositivo: ${licenseCheck.deviceId}`);
+    console.log(`💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`);
+    console.log(`🖥️  Este dispositivo: ${licenseCheck.deviceId}`);
+    
+    // ============= FIM DO BLOCO DE VERIFICAÇÃO DE LICENÇA =============
 
     // 2. Iniciar WhatsApp Client
-    console.log("\n🔴 Iniciando WhatsApp Bot...");
     const client = await criarClienteWhatsApp();
-    configurarEventosWhatsApp(client);
 
     // 3. Inicializar e aguardar ready
     await client.initialize();
@@ -354,21 +366,6 @@ async function main() {
     
     configurarEventosWhatsApp(client);
 
-    // Verificar se já existe sessão
-    if (fs.existsSync(path.join(sessionDir, 'auth_verified'))) {
-      console.log('🔍 Sessão anterior encontrada - Tentando restaurar...');
-    }
-
-    await client.initialize();
-    
-    // Aguardar até estar pronto
-    await new Promise(resolve => client.once('ready', resolve));
-    
-    // Iniciar envio de mensagens
-    await enviarMensagens(client);
-
-    // Manter o processo ativo
-    await new Promise(() => {});
   } catch (error) {
     console.error('❌ Erro no processo principal:', error.message);
     await aguardarTeclaParaSair();

@@ -19,23 +19,25 @@ const db = getFirestore(app);
 const userData = {
   active: true,
   allowedFeatures: ["envio_mensagens", "leitura_contatos"],
-  blocked: false,
-  devices: ["5b96ffc78c02710aa600812e7797228c"],
-  email: "thiago.developed@gmail.com",
-  expirationDate: "2026-08-04",
-  lastAccess: "",
-  maxDevices: 1,
-  name: "Thiago Pereira"
+  email: "luizzlcs@gmail.com",
+  expirationDate: "2025-05-15",
+  lastAccess: "2025-04-13T19:35:30.111Z",
+  maxDevices: 2,
+  name: "Luiz Carlos",
+  devices: [
+    {
+      blocked: false,
+      device: "5b96ffc78c02710aa600812e7797228c",
+      lastAccess: "2025-04-13T19:35:30.111Z"
+    }
+  ]
 };
 
 async function updateFirebaseData() {
   try {
-    // Referência ao documento (usando o email como ID)
     const userDocRef = doc(db, "botWhatsApp", userData.email);
-    
-    // Atualiza ou cria o documento
     await setDoc(userDocRef, userData, { merge: true });
-    
+
     console.log('✅ Dados atualizados com sucesso!');
     console.log('Documento ID:', userData.email);
     console.log('Dados atualizados:', userData);
