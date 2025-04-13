@@ -2,12 +2,8 @@ const { initializeApp } = require("firebase/app");
 const {
   getFirestore,
   doc,
-  getDoc, // Adicionando a importação que estava faltando
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+  getDoc,
+  updateDoc
 } = require("firebase/firestore");
 const crypto = require("crypto");
 const axios = require("axios");
@@ -27,19 +23,18 @@ class FirebaseService {
     this.db = getFirestore(this.app);
   }
 
-  // Função auxiliar para encontrar dispositivo no array
-  findDeviceIndex(devicesArray, deviceId) {
-    return devicesArray.findIndex(device => device.deviceId === deviceId);
+  findDevice(devicesArray, deviceId) {
+    return devicesArray.find(device => device.device === deviceId);
   }
 
   async getCurrentInternetTime() {
     try {
       const response = await axios.get("https://worldtimeapi.org/api/ip", {
-        timeout: 8000,
+        timeout: 5000
       });
       return new Date(response.data.utc_datetime);
     } catch (error) {
-      console.warn("⚠️ Falha ao obter tempo online, usando tempo local com aviso");
+      console.warn("⚠️ Usando horário local como fallback");
       return new Date();
     }
   }
@@ -55,15 +50,12 @@ class FirebaseService {
     return crypto
       .createHash("sha256")
       .update(hardwareInfo)
-      .digest("hex")
-      .substring(0, 32);
+      .digest("hex");
   }
 
   async validateLicense(email, deviceId) {
     try {
       const currentTime = await this.getCurrentInternetTime();
-      
-      // 1. Buscar usuário pelo email (usando email como ID do documento)
       const userRef = doc(this.db, "botWhatsApp", email);
       const userDoc = await getDoc(userRef);
 
@@ -73,9 +65,9 @@ class FirebaseService {
 
       const userData = userDoc.data();
 
-      // 2. Verificações básicas
+      // Verificações básicas da licença
       if (!userData.active) {
-        return { valid: false, reason: "Conta inativa" };
+        return { valid: false, reason: "Licença inativa" };
       }
 
       const expirationDate = new Date(userData.expirationDate);
@@ -83,59 +75,52 @@ class FirebaseService {
         return { valid: false, reason: "Licença expirada" };
       }
 
-      // 3. Gerenciamento de dispositivos
-      const devices = Array.isArray(userData.devices) ? userData.devices : [];
-      const deviceIndex = this.findDeviceIndex(devices, deviceId);
-      const isNewDevice = deviceIndex === -1;
+      // Gerenciamento de dispositivos
+      const devices = userData.devices || [];
+      const existingDevice = this.findDevice(devices, deviceId);
+      const isNewDevice = !existingDevice;
 
-      // 4. Atualizar/Criar dispositivo
+      // Atualizar/Criar registro do dispositivo
       const updatedDevices = [...devices];
       let currentDevice;
 
       if (isNewDevice) {
-        // Contar dispositivos ativos
+        // Verificar limite de dispositivos
         const activeDevices = devices.filter(d => !d.blocked).length;
-        const willBlock = activeDevices >= userData.maxDevices;
+        if (activeDevices >= userData.maxDevices) {
+          return { 
+            valid: false, 
+            reason: `Limite de ${userData.maxDevices} dispositivos atingido` 
+          };
+        }
 
         currentDevice = {
-          deviceId,
-          blocked: willBlock,
-          lastAccess: currentTime.toISOString(),
-          name: `Dispositivo ${devices.length + 1}`
-        };
-
-        updatedDevices.push(currentDevice);
-      } else {
-        // Atualizar dispositivo existente
-        currentDevice = {
-          ...devices[deviceIndex],
+          device: deviceId,
+          blocked: false,
           lastAccess: currentTime.toISOString()
         };
+        updatedDevices.push(currentDevice);
+      } else {
+        currentDevice = {
+          ...existingDevice,
+          lastAccess: currentTime.toISOString()
+        };
+        const deviceIndex = devices.findIndex(d => d.device === deviceId);
         updatedDevices[deviceIndex] = currentDevice;
       }
 
-      // 5. Atualizar no Firebase
+      // Atualizar no Firestore
       await updateDoc(userRef, {
         devices: updatedDevices,
         lastAccess: currentTime.toISOString()
       });
 
-      // 6. Validar acesso
-      if (currentDevice.blocked) {
-        return { 
-          valid: false, 
-          reason: `Limite de ${userData.maxDevices} dispositivos ativos atingido.` 
-        };
-      }
-
       return {
         valid: true,
         userData: {
           ...userData,
-          currentDevice,
-          activeDevices: updatedDevices.filter(d => !d.blocked).length,
-          maxDevices: userData.maxDevices,
-          expirationDate: expirationDate
+          expirationDate: expirationDate,
+          currentDevice: currentDevice
         }
       };
 
@@ -145,19 +130,16 @@ class FirebaseService {
     }
   }
 
-  async getUserByEmail(email) {
+  async getUserLicense(email) {
     try {
       const userRef = doc(this.db, "botWhatsApp", email);
       const userDoc = await getDoc(userRef);
       
       if (!userDoc.exists()) return null;
       
-      return {
-        ...userDoc.data(),
-        docId: userDoc.id
-      };
+      return userDoc.data();
     } catch (error) {
-      console.error("Erro ao buscar usuário:", error);
+      console.error("Erro ao buscar licença:", error);
       return null;
     }
   }

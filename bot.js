@@ -42,6 +42,8 @@ const readline = require("readline");
 const https = require("https");
 const crypto = require("crypto");
 const dgram = require("dgram");
+const firebaseService = require("./firebaseService");
+const licenseManager = require("./licenseManager");
 
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
@@ -318,9 +320,38 @@ ${falhas > 0 ? `📝 Números com falha:\n${numerosComFalha.join("\n")}` : ''}
 // ==================== FUNÇÃO PRINCIPAL ====================
 async function main() {
   try {
+    console.log("🔍 Verificando licença...");
+    
+    // 1. Validar licença
+    const licenseCheck = await licenseManager.validateLicense();
+    if (!licenseCheck.valid) {
+      console.error(`❌ ${licenseCheck.reason}`);
+      await aguardarTeclaParaSair();
+      process.exit(1);
+    }
+
+    console.log("\n✅ Licença válida! Detalhes:");
+    console.log(`👤 Nome: ${licenseCheck.userData.name}`);
+    console.log(`📧 Email: ${licenseCheck.userData.email}`);
+    console.log(`📅 Expiração: ${licenseCheck.userData.expirationDate.toLocaleDateString()}`);
+    console.log(`💻 Dispositivo: ${licenseCheck.deviceId}`);
+
+    // 2. Iniciar WhatsApp Client
+    console.log("\n🔴 Iniciando WhatsApp Bot...");
+    const client = await criarClienteWhatsApp();
+    configurarEventosWhatsApp(client);
+
+    // 3. Inicializar e aguardar ready
+    await client.initialize();
+    await new Promise(resolve => client.once('ready', resolve));
+
+    // 4. Iniciar envio de mensagens
+    await enviarMensagens(client);
+
+    // 5. Manter processo ativo
+    await new Promise(() => {});
     console.log("🔴 Iniciando WhatsApp Bot...");
     
-    const client = await criarClienteWhatsApp();
     configurarEventosWhatsApp(client);
 
     // Verificar se já existe sessão
