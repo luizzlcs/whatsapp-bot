@@ -98,13 +98,11 @@ class LicenseManager {
         }
       }
 
-      // 2. Gerar/recuperar ID do dispositivo
+      // 2. Gerar/recuperar ID do dispositivo (REMOVA O CONSOLE.LOG DAQUI)
       let deviceId = await this.getStoredDeviceId();
       if (!deviceId) {
         deviceId = firebaseService.generateDeviceId();
       }
-      
-      console.log("🖥️  ID do dispositivo:", deviceId);
 
       // 3. Validar licença no Firebase
       const validation = await firebaseService.validateLicense(email, deviceId);
@@ -136,7 +134,7 @@ class LicenseManager {
       console.error("Erro na validação da licença:", error);
       return { valid: false, reason: error.message };
     }
-  }
+}
 
   async checkExpirationWarning(userData) {
     const currentTime = await firebaseService.getCurrentInternetTime();

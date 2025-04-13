@@ -61,7 +61,7 @@ const sessionDir = path.join(execDir, ".wwebjs_auth");
 const securityDir = path.join(sessionDir, "security");
 
 // Criar diretórios necessários
-[logsDir, configDir, tempDir, sessionDir, securityDir].forEach(dir => {
+[logsDir, configDir, tempDir, sessionDir, securityDir].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -86,8 +86,11 @@ function formatarNomeArquivoData(date) {
 function registrarErroDetalhado(error, contexto = "Erro não especificado") {
   try {
     const logDir = path.join(execDir, "logs");
-    const logPath = path.join(logDir, `error_${formatarNomeArquivoData(new Date())}.txt`);
-    
+    const logPath = path.join(
+      logDir,
+      `error_${formatarNomeArquivoData(new Date())}.txt`
+    );
+
     const mensagemErro = `
 ===== REGISTRO DE ERRO =====
 Data/Hora: ${formatarDataHora(new Date())}
@@ -114,7 +117,7 @@ function aguardarTeclaParaSair(mensagemErro = null) {
 
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     rl.question("", () => {
@@ -127,9 +130,10 @@ function aguardarTeclaParaSair(mensagemErro = null) {
 // ==================== SISTEMA DE SEGURANÇA ====================
 class TimeSecurity {
   generateMachineHash() {
-    const machineId = process.env.COMPUTERNAME || 
-                     process.env.HOSTNAME || 
-                     crypto.randomBytes(16).toString("hex");
+    const machineId =
+      process.env.COMPUTERNAME ||
+      process.env.HOSTNAME ||
+      crypto.randomBytes(16).toString("hex");
     return crypto.createHash("sha256").update(machineId).digest();
   }
 
@@ -162,11 +166,12 @@ class TimeSecurity {
 // ==================== CONFIGURAÇÃO DO WHATSAPP CLIENT ====================
 async function criarClienteWhatsApp() {
   const chromePath = [
-    process.env.PROGRAMFILES + '\\Google\\Chrome\\Application\\chrome.exe',
-    process.env['PROGRAMFILES(X86)'] + '\\Google\\Chrome\\Application\\chrome.exe',
-    '/usr/bin/google-chrome',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-  ].find(path => fs.existsSync(path));
+    process.env.PROGRAMFILES + "\\Google\\Chrome\\Application\\chrome.exe",
+    process.env["PROGRAMFILES(X86)"] +
+      "\\Google\\Chrome\\Application\\chrome.exe",
+    "/usr/bin/google-chrome",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  ].find((path) => fs.existsSync(path));
 
   if (!chromePath) {
     throw new Error("Navegador Chrome não encontrado");
@@ -175,25 +180,25 @@ async function criarClienteWhatsApp() {
   const client = new whatsapp.Client({
     authStrategy: new whatsapp.LocalAuth({
       dataPath: sessionDir,
-      clientId: "whatsapp-bot-client" // ID fixo para persistência
+      clientId: "whatsapp-bot-client", // ID fixo para persistência
     }),
     puppeteer: {
       headless: false,
       executablePath: chromePath,
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--disable-gpu'
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
       ],
-      timeout: 60000
+      timeout: 60000,
     },
     takeoverOnConflict: true,
     qrMaxRetries: 0,
-    restartOnAuthFail: true
+    restartOnAuthFail: true,
   });
 
   return client;
@@ -203,30 +208,30 @@ async function criarClienteWhatsApp() {
 function configurarEventosWhatsApp(client) {
   let reconectando = false;
 
-  client.on('qr', qr => {
-    console.log('🔎 QR Code recebido - Escaneie para autenticar');
+  client.on("qr", (qr) => {
+    console.log("🔎 QR Code recebido - Escaneie para autenticar");
     const qrCodePath = path.join(tempDir, "qrcode.png");
-    qrcode.toFile(qrCodePath, qr, err => {
+    qrcode.toFile(qrCodePath, qr, (err) => {
       if (!err) exec(`start "" "${qrCodePath}"`);
     });
   });
 
-  client.on('authenticated', () => {
-    console.log('✅ Autenticado com sucesso! Sessão salva.');
-    fs.writeFileSync(path.join(sessionDir, 'auth_verified'), 'true');
+  client.on("authenticated", () => {
+    console.log("✅ Autenticado com sucesso! Sessão salva.");
+    fs.writeFileSync(path.join(sessionDir, "auth_verified"), "true");
   });
 
-  client.on('auth_failure', msg => {
-    console.error('❌ Falha na autenticação:', msg);
+  client.on("auth_failure", (msg) => {
+    console.error("❌ Falha na autenticação:", msg);
     setTimeout(() => reconectarClient(client), 5000);
   });
 
-  client.on('ready', () => {
-    console.log('✅ WhatsApp Client pronto para uso');
+  client.on("ready", () => {
+    console.log("✅ WhatsApp Client pronto para uso");
   });
 
-  client.on('disconnected', async (reason) => {
-    console.log('🚨 Desconectado:', reason);
+  client.on("disconnected", async (reason) => {
+    console.log("🚨 Desconectado:", reason);
     if (!reconectando) {
       reconectando = true;
       await reconectarClient(client);
@@ -237,42 +242,45 @@ function configurarEventosWhatsApp(client) {
   // Ping periódico para manter conexão ativa
   setInterval(() => {
     if (client && client.pupPage && !client.pupPage.isClosed()) {
-      client.pupPage.evaluate(() => {
-        try {
-          window.Store.Presence.setAvailable();
-        } catch (e) {}
-      }).catch(() => {});
+      client.pupPage
+        .evaluate(() => {
+          try {
+            window.Store.Presence.setAvailable();
+          } catch (e) {}
+        })
+        .catch(() => {});
     }
   }, 30000);
 }
 
 // ==================== RECONEXÃO AUTOMÁTICA ====================
 async function reconectarClient(client) {
-  console.log('⚡ Tentando reconectar...');
-  
+  console.log("⚡ Tentando reconectar...");
+
   try {
     if (client.pupBrowser) {
       await client.pupBrowser.close().catch(() => {});
     }
-    
+
     client.removeAllListeners();
     await client.initialize();
     configurarEventosWhatsApp(client);
-    
-    console.log('✅ Reconexão bem-sucedida');
+
+    console.log("✅ Reconexão bem-sucedida");
   } catch (error) {
-    console.error('❌ Falha na reconexão:', error.message);
+    console.error("❌ Falha na reconexão:", error.message);
     setTimeout(() => reconectarClient(client), 10000);
   }
 }
 
 // ==================== ENVIO DE MENSAGENS ====================
 async function enviarMensagens(client) {
-
   // Verificar novamente a licença antes de enviar mensagens
   const licenseCheck = await licenseManager.validateLicense();
   if (!licenseCheck.valid) {
-    console.error(`❌ Licença inválida durante o envio: ${licenseCheck.reason}`);
+    console.error(
+      `❌ Licença inválida durante o envio: ${licenseCheck.reason}`
+    );
     return;
   }
 
@@ -287,17 +295,19 @@ async function enviarMensagens(client) {
     fs.writeFileSync(mensagemPath, "Olá, esta é uma mensagem de teste!");
   }
 
-  const numeros = fs.readFileSync(numerosPath, "utf8")
+  const numeros = fs
+    .readFileSync(numerosPath, "utf8")
     .split("\n")
-    .map(n => n.trim())
-    .filter(n => n && !n.startsWith("//"))
-    .map(n => n.replace(/\D/g, "") + "@c.us");
+    .map((n) => n.trim())
+    .filter((n) => n && !n.startsWith("//"))
+    .map((n) => n.replace(/\D/g, "") + "@c.us");
 
   const mensagem = fs.readFileSync(mensagemPath, "utf8");
 
   console.log(`📤 Iniciando envio para ${numeros.length} números...`);
 
-  let enviadas = 0, falhas = 0;
+  let enviadas = 0,
+    falhas = 0;
   const numerosComFalha = [];
 
   for (const numero of numeros) {
@@ -311,7 +321,7 @@ async function enviarMensagens(client) {
 
       await client.sendMessage(contato._serialized, mensagem);
       enviadas++;
-      await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+      await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
     } catch (error) {
       falhas++;
       numerosComFalha.push(numero.replace("@c.us", ""));
@@ -322,19 +332,20 @@ async function enviarMensagens(client) {
 📋 RESUMO DO ENVIO:
 ✅ Enviadas: ${enviadas}
 ❌ Falhas: ${falhas}
-${falhas > 0 ? `📝 Números com falha:\n${numerosComFalha.join("\n")}` : ''}
+${falhas > 0 ? `📝 Números com falha:\n${numerosComFalha.join("\n")}` : ""}
 `);
 }
 
 // ==================== FUNÇÃO PRINCIPAL ====================
 async function main() {
-  try {
+  const localTime = new Date();
 
+  try {
     // =============  VERIFICAÇÃO DE LICENÇA =============
     console.log("🔍 Verificando licença...");
-    
-    // 1. Validar licença
+
     const licenseCheck = await licenseManager.validateLicense();
+    // 1. Validar licença
     if (!licenseCheck.valid) {
       console.error(`❌ ${licenseCheck.reason}`);
       await aguardarTeclaParaSair();
@@ -344,10 +355,15 @@ async function main() {
     console.log("\n✅ Licença válida! Detalhes:");
     console.log(`👤 Nome: ${licenseCheck.userData.name}`);
     console.log(`📧 Email: ${licenseCheck.userData.email}`);
-    console.log(`📅 Expiração: ${licenseCheck.userData.expirationDate.toLocaleDateString()}`);
-    console.log(`💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`);
-    console.log(`🖥️  Este dispositivo: ${licenseCheck.deviceId}`);
-    
+    console.log(
+      `📅 Expiração: ${licenseCheck.userData.expirationDate.toLocaleDateString()}`
+    );
+    console.log(`🕒 ${formatarDataHora(localTime)} | Fonte: Local`);
+    console.log(
+      `💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`
+    );
+    console.log(`🖥️  ID do dispositivo: ${licenseCheck.deviceId}`);
+
     // ============= FIM DO BLOCO DE VERIFICAÇÃO DE LICENÇA =============
 
     // 2. Iniciar WhatsApp Client
@@ -355,7 +371,7 @@ async function main() {
 
     // 3. Inicializar e aguardar ready
     await client.initialize();
-    await new Promise(resolve => client.once('ready', resolve));
+    await new Promise((resolve) => client.once("ready", resolve));
 
     // 4. Iniciar envio de mensagens
     await enviarMensagens(client);
@@ -363,18 +379,17 @@ async function main() {
     // 5. Manter processo ativo
     await new Promise(() => {});
     console.log("🔴 Iniciando WhatsApp Bot...");
-    
-    configurarEventosWhatsApp(client);
 
+    configurarEventosWhatsApp(client);
   } catch (error) {
-    console.error('❌ Erro no processo principal:', error.message);
+    console.error("❌ Erro no processo principal:", error.message);
     await aguardarTeclaParaSair();
     process.exit(1);
   }
 }
 
 // Iniciar aplicação
-main().catch(err => {
+main().catch((err) => {
   registrarErroDetalhado(err, "Erro no processo principal");
   process.exit(1);
 });
