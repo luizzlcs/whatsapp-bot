@@ -20,7 +20,26 @@ function formatarNomeArquivoData(date) {
     return `${dia}-${mes}-${ano}_${horas}-${minutos}-${segundos}`;
 }
 
+function mostrarLoading() {
+    const frames = ['[▰▱▱▱▱▱▱]', '[▰▰▱▱▱▱▱]', '[▰▰▰▱▱▱▱]', '[▰▰▰▰▱▱▱]', 
+                   '[▰▰▰▰▰▱▱]', '[▰▰▰▰▰▰▱]', '[▰▰▰▰▰▰▰]', '[▰▰▰▰▰▰▱]',
+                   '[▰▰▰▰▰▱▱]', '[▰▰▰▰▱▱▱]', '[▰▰▰▱▱▱▱]', '[▰▰▱▱▱▱▱]'];
+    let i = 0;
+    
+    const interval = setInterval(() => {
+        process.stdout.write(`\r🔍 Verificando licença ${frames[i = (i + 1) % frames.length]}`);
+    }, 120);
+
+    return {
+        stop: () => {
+            clearInterval(interval);
+            process.stdout.write('\r✔ Verificação concluída!' + ' '.repeat(30) + '\n');
+        }
+    };
+}
+
 module.exports = {
     formatarDataHora,
-    formatarNomeArquivoData
+    formatarNomeArquivoData,
+    mostrarLoading
 };

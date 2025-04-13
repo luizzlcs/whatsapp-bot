@@ -342,7 +342,7 @@ async function main() {
 
   try {
     // =============  VERIFICAÇÃO DE LICENÇA =============
-    console.log("🔍 Verificando licença...");
+    console.log('🕒 ' + formatarDataHora(new Date()) + ' | Iniciando verificação');
 
     const licenseCheck = await licenseManager.validateLicense();
     // 1. Validar licença

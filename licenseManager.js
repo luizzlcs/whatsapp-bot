@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
+const { mostrarLoading } = require('./utils');
 const firebaseService = require("./firebaseService");
 
 class LicenseManager {
@@ -88,14 +89,17 @@ class LicenseManager {
   }
 
   async validateLicense() {
+    const loading = mostrarLoading('🔍 Verificando licença');
     try {
       // 1. Obter email do usuário
       let email = await this.getStoredEmail();
       if (!email) {
+        loading.stop();
         email = await this.promptForEmail();
         if (!email) {
           return { valid: false, reason: "Email não fornecido" };
         }
+        loading = mostrarLoading('🔍 Verificando licença');
       }
 
       // 2. Gerar/recuperar ID do dispositivo (REMOVA O CONSOLE.LOG DAQUI)
@@ -106,6 +110,7 @@ class LicenseManager {
 
       // 3. Validar licença no Firebase
       const validation = await firebaseService.validateLicense(email, deviceId);
+      loading.stop();
       if (!validation.valid) {
         return validation;
       }
@@ -131,6 +136,7 @@ class LicenseManager {
       };
 
     } catch (error) {
+      loading.stop();
       console.error("Erro na validação da licença:", error);
       return { valid: false, reason: error.message };
     }
