@@ -45,7 +45,6 @@ const dgram = require("dgram");
 const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
 
-
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -167,8 +166,7 @@ class TimeSecurity {
 async function criarClienteWhatsApp() {
   const chromePath = [
     process.env.PROGRAMFILES + "\\Google\\Chrome\\Application\\chrome.exe",
-    process.env["PROGRAMFILES(X86)"] +
-      "\\Google\\Chrome\\Application\\chrome.exe",
+    process.env["PROGRAMFILES(X86)"] + "\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   ].find((path) => fs.existsSync(path));
@@ -177,10 +175,21 @@ async function criarClienteWhatsApp() {
     throw new Error("Navegador Chrome não encontrado");
   }
 
+  // Limpar sessão anterior se existir
+  try {
+    const lockfile = path.join(sessionDir, 'session-whatsapp-bot-client', 'lockfile');
+    if (fs.existsSync(lockfile)) {
+      fs.unlinkSync(lockfile);
+    }
+  } catch (e) {
+    console.warn("Não foi possível limpar lockfile anterior:", e.message);
+  }
+
   const client = new whatsapp.Client({
     authStrategy: new whatsapp.LocalAuth({
       dataPath: sessionDir,
-      clientId: "whatsapp-bot-client", // ID fixo para persistência
+      clientId: "whatsapp-bot-client",
+      bypassPathCheck: true
     }),
     puppeteer: {
       headless: false,
@@ -189,16 +198,15 @@ async function criarClienteWhatsApp() {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-gpu",
+        "--single-process", // Adicionado para melhor estabilidade
+        "--no-zygote"
       ],
       timeout: 60000,
+      ignoreDefaultArgs: ["--disable-extensions"]
     },
-    takeoverOnConflict: true,
-    qrMaxRetries: 0,
-    restartOnAuthFail: true,
+    takeoverOnConflict: false, // Alterado para false para evitar conflitos
+    qrMaxRetries: 3, // Aumentado para mais tentativas
+    restartOnAuthFail: true
   });
 
   return client;
@@ -207,31 +215,79 @@ async function criarClienteWhatsApp() {
 // ==================== CONFIGURAÇÃO DE EVENTOS ====================
 function configurarEventosWhatsApp(client) {
   let reconectando = false;
+  let qrCodeGenerated = false;
 
-  client.on("qr", (qr) => {
+  // Evento quando o QR Code é gerado
+  client.on("qr", async (qr) => {
+    if (qrCodeGenerated) return; // Evitar gerar múltiplos QR Codes
+    qrCodeGenerated = true;
+    
     console.log("🔎 QR Code recebido - Escaneie para autenticar");
     const qrCodePath = path.join(tempDir, "qrcode.png");
-    qrcode.toFile(qrCodePath, qr, (err) => {
-      if (!err) exec(`start "" "${qrCodePath}"`);
-    });
+
+    try {
+      // Gerar imagem do QR Code
+      await qrcode.toFile(qrCodePath, qr);
+      console.log(`📷 QR Code salvo em: ${qrCodePath}`);
+
+      // Tentar abrir a imagem automaticamente
+      if (process.platform === 'win32') {
+        exec(`start "" "${qrCodePath}"`, (error) => {
+          if (error) {
+            console.log("ℹ️ Não foi possível abrir a imagem automaticamente.");
+            console.log("ℹ️ Abra manualmente o arquivo em:", qrCodePath);
+          }
+        });
+      }
+
+      // Mostrar QR Code no terminal como fallback
+      // qrcode.toString(qr, { type: 'terminal' }, (err, qrTerminal) => {
+      //   if (!err) {
+      //     console.log("\n🔢 QR Code para escaneamento (terminal):");
+      //     console.log(qrTerminal);
+      //   }
+      // });
+
+    } catch (err) {
+      console.error("❌ Erro ao gerar QR Code:", err);
+      registrarErroDetalhado(err, "Erro ao gerar QR Code");
+    }
   });
 
+  // Evento quando autenticado com sucesso
   client.on("authenticated", () => {
     console.log("✅ Autenticado com sucesso! Sessão salva.");
-    fs.writeFileSync(path.join(sessionDir, "auth_verified"), "true");
+    qrCodeGenerated = false; // Resetar flag para reconexões futuras
+    try {
+      fs.writeFileSync(path.join(sessionDir, "auth_verified"), "true");
+    } catch (err) {
+      console.error("❌ Erro ao salvar verificação de autenticação:", err);
+    }
   });
 
+  // Evento quando há falha na autenticação
   client.on("auth_failure", (msg) => {
     console.error("❌ Falha na autenticação:", msg);
-    setTimeout(() => reconectarClient(client), 5000);
+    registrarErroDetalhado(new Error(msg), "Falha na autenticação");
+    qrCodeGenerated = false; // Permitir novo QR Code
+    
+    if (!reconectando) {
+      setTimeout(() => reconectarClient(client), 5000);
+    }
   });
 
+  // Evento quando o cliente está pronto
   client.on("ready", () => {
     console.log("✅ WhatsApp Client pronto para uso");
+    qrCodeGenerated = false;
   });
 
+  // Evento quando desconectado
   client.on("disconnected", async (reason) => {
     console.log("🚨 Desconectado:", reason);
+    registrarErroDetalhado(new Error(reason), "Conexão perdida");
+    qrCodeGenerated = false;
+    
     if (!reconectando) {
       reconectando = true;
       await reconectarClient(client);
@@ -239,18 +295,44 @@ function configurarEventosWhatsApp(client) {
     }
   });
 
+  // Evento de mudança de estado
+  client.on("change_state", (state) => {
+    console.log("🔄 Mudança de estado:", state);
+  });
+
+  // Evento de mensagem recebida
+  client.on("message", (msg) => {
+    if (msg.fromMe) return; // Ignorar mensagens enviadas pelo próprio bot
+    
+    // Exemplo: Responder mensagens específicas
+    if (msg.body.toLowerCase() === 'ping') {
+      client.sendMessage(msg.from, 'Pong!');
+    }
+  });
+
   // Ping periódico para manter conexão ativa
-  setInterval(() => {
+  const keepAliveInterval = setInterval(() => {
     if (client && client.pupPage && !client.pupPage.isClosed()) {
-      client.pupPage
-        .evaluate(() => {
-          try {
-            window.Store.Presence.setAvailable();
-          } catch (e) {}
-        })
-        .catch(() => {});
+      client.pupPage.evaluate(() => {
+        try {
+          window.Store.Presence.setAvailable();
+        } catch (e) {
+          console.error("Erro no ping de conexão:", e);
+        }
+      }).catch(() => {});
     }
   }, 30000);
+
+  // Limpar intervalo quando o cliente for destruído
+  client.on("disconnected", () => {
+    clearInterval(keepAliveInterval);
+  });
+
+  // Log de erros internos
+  client.on("error", (error) => {
+    console.error("❌ Erro interno do cliente:", error);
+    registrarErroDetalhado(error, "Erro interno do cliente WhatsApp");
+  });
 }
 
 // ==================== RECONEXÃO AUTOMÁTICA ====================
@@ -342,7 +424,9 @@ async function main() {
 
   try {
     // =============  VERIFICAÇÃO DE LICENÇA =============
-    console.log('🕒 ' + formatarDataHora(new Date()) + ' | Iniciando verificação');
+    console.log(
+      "🕒 " + formatarDataHora(new Date()) + " | Iniciando verificação"
+    );
 
     const licenseCheck = await licenseManager.validateLicense();
     // 1. Validar licença
@@ -366,21 +450,41 @@ async function main() {
 
     // ============= FIM DO BLOCO DE VERIFICAÇÃO DE LICENÇA =============
 
-    // 2. Iniciar WhatsApp Client
+    // 1. Iniciar WhatsApp Client
+    // ============= INICIALIZAÇÃO DO WHATSAPP =============
+    console.log("🔴 Iniciando WhatsApp Bot...");
     const client = await criarClienteWhatsApp();
 
-    // 3. Inicializar e aguardar ready
-    await client.initialize();
-    await new Promise((resolve) => client.once("ready", resolve));
+    // 2. Configurar eventos ANTES de inicializar
+    configurarEventosWhatsApp(client);
 
-    // 4. Iniciar envio de mensagens
+    // 3. Inicializar o cliente
+    await client.initialize();
+    // await new Promise((resolve) => client.once("ready", resolve));
+
+    // 4. Aguardar autenticação/ready
+    await new Promise((resolve) => {
+      const readyHandler = () => {
+        client.off("ready", readyHandler);
+        resolve();
+      };
+      client.on("ready", readyHandler);
+
+      // Timeout para evitar espera infinita
+      setTimeout(() => {
+        if (!client.pupPage) {
+          console.error("❌ Tempo excedido aguardando autenticação");
+          process.exit(1);
+        }
+      }, 300000); // 5 minutos de timeout
+    });
+
+    // 5. Iniciar envio de mensagens
     await enviarMensagens(client);
 
-    // 5. Manter processo ativo
+    // 6. Manter processo ativo
     await new Promise(() => {});
-    console.log("🔴 Iniciando WhatsApp Bot...");
 
-    configurarEventosWhatsApp(client);
   } catch (error) {
     console.error("❌ Erro no processo principal:", error.message);
     await aguardarTeclaParaSair();

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
-const { mostrarLoading } = require('./utils');
+const { mostrarLoading } = require("./utils");
 const firebaseService = require("./firebaseService");
 
 class LicenseManager {
@@ -54,19 +54,11 @@ class LicenseManager {
   async saveSessionData(email, deviceId) {
     try {
       await this.ensureSessionDir();
-      
-      fs.writeFileSync(
-        this.emailPath,
-        JSON.stringify({ email }),
-        "utf8"
-      );
-      
-      fs.writeFileSync(
-        this.devicePath,
-        JSON.stringify({ deviceId }),
-        "utf8"
-      );
-      
+
+      fs.writeFileSync(this.emailPath, JSON.stringify({ email }), "utf8");
+
+      fs.writeFileSync(this.devicePath, JSON.stringify({ deviceId }), "utf8");
+
       return true;
     } catch (error) {
       console.error("Erro ao salvar dados da sessão:", error);
@@ -77,7 +69,7 @@ class LicenseManager {
   async promptForEmail() {
     const rl = readline.createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     return new Promise((resolve) => {
@@ -89,7 +81,7 @@ class LicenseManager {
   }
 
   async validateLicense() {
-    const loading = mostrarLoading('🔍 Verificando licença');
+    let loading = mostrarLoading("🔍 Verificando licença");
     try {
       // 1. Obter email do usuário
       let email = await this.getStoredEmail();
@@ -99,7 +91,7 @@ class LicenseManager {
         if (!email) {
           return { valid: false, reason: "Email não fornecido" };
         }
-        loading = mostrarLoading('🔍 Verificando licença');
+        loading = mostrarLoading("🔍 Verificando licença");
       }
 
       // 2. Gerar/recuperar ID do dispositivo (REMOVA O CONSOLE.LOG DAQUI)
@@ -130,17 +122,17 @@ class LicenseManager {
         valid: true,
         userData: {
           ...validation.userData,
-          daysLeft: expirationCheck.daysLeft
+          daysLeft: expirationCheck.daysLeft,
         },
-        deviceId: deviceId
+        deviceId: deviceId,
       };
-
     } catch (error) {
-      loading.stop();
       console.error("Erro na validação da licença:", error);
       return { valid: false, reason: error.message };
+    } finally {
+      if (loading && loading.stop) loading.stop();
     }
-}
+  }
 
   async checkExpirationWarning(userData) {
     const currentTime = await firebaseService.getCurrentInternetTime();
@@ -151,12 +143,14 @@ class LicenseManager {
 
     if (daysLeft <= 7) {
       console.log("\n⚠️ ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
-      console.log(`📅 Data de expiração: ${expirationDate.toLocaleDateString()}`);
+      console.log(
+        `📅 Data de expiração: ${expirationDate.toLocaleDateString()}`
+      );
       console.log(`⏳ Dias restantes: ${daysLeft}`);
 
       const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
       });
 
       const answer = await new Promise((resolve) => {
@@ -178,11 +172,11 @@ class LicenseManager {
     try {
       const licenseData = await firebaseService.getUserLicense(email);
       if (!licenseData) return null;
-      
+
       return {
-        active: licenseData.devices?.filter(d => !d.blocked) || [],
-        blocked: licenseData.devices?.filter(d => d.blocked) || [],
-        maxDevices: licenseData.maxDevices
+        active: licenseData.devices?.filter((d) => !d.blocked) || [],
+        blocked: licenseData.devices?.filter((d) => d.blocked) || [],
+        maxDevices: licenseData.maxDevices,
       };
     } catch (error) {
       console.error("Erro ao obter dispositivos:", error);
