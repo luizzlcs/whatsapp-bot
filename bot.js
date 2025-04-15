@@ -364,6 +364,7 @@ async function reconectarClient(client) {
 
 // ==================== ENVIO DE MENSAGENS ====================
 async function enviarMensagens(client) {
+  const { atualizarBarraProgresso } = require("./utils");
   // Verificar novamente a licença antes de enviar mensagens
   const licenseCheck = await licenseManager.validateLicense();
   if (!licenseCheck.valid) {
@@ -406,6 +407,64 @@ async function enviarMensagens(client) {
 
     // Finaliza a sessão e obtém estatísticas
     const stats = messageManager.finalizeSession();
+
+    const inicio = Date.now();
+    const totalNumeros = numeros.length;
+    let enviadas = 0;
+    let sucessos = 0;
+    let falhas = 0;
+
+    // Mostra barra inicial
+    atualizarBarraProgresso({
+      progresso: 0,
+      total: totalNumeros,
+      enviadas: 0,
+      sucessos: 0,
+      falhas: 0,
+      tempoDecorrido: 0,
+      tempoRestante: 0,
+    });
+
+    for (const numero of numeros) {
+      try {
+        const contato = await client.getNumberId(numero);
+        if (!contato) {
+          falhas++;
+          enviadas++;
+          continue;
+        }
+
+        await client.sendMessage(contato._serialized, mensagem);
+        sucessos++;
+        enviadas++;
+      } catch (error) {
+        falhas++;
+        enviadas++;
+      } finally {
+        const tempoDecorrido = (Date.now() - inicio) / 1000;
+        const progresso = (enviadas / totalNumeros) * 100;
+        const tempoMedioPorMsg = tempoDecorrido / enviadas;
+        const tempoRestante = Math.max(
+          0,
+          (totalNumeros - enviadas) * tempoMedioPorMsg
+        );
+
+        atualizarBarraProgresso({
+          progresso,
+          total: totalNumeros,
+          enviadas,
+          sucessos,
+          falhas,
+          tempoDecorrido,
+          tempoRestante,
+        });
+
+        await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
+      }
+    }
+
+    // Garantir quebra de linha no fim
+    process.stdout.write("\n");
 
     if (stats) {
       console.log(`
