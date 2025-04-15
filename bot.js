@@ -44,6 +44,7 @@ const crypto = require("crypto");
 const dgram = require("dgram");
 const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
+const MessageManager = require("./messageManager");
 
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
@@ -166,7 +167,8 @@ class TimeSecurity {
 async function criarClienteWhatsApp() {
   const chromePath = [
     process.env.PROGRAMFILES + "\\Google\\Chrome\\Application\\chrome.exe",
-    process.env["PROGRAMFILES(X86)"] + "\\Google\\Chrome\\Application\\chrome.exe",
+    process.env["PROGRAMFILES(X86)"] +
+      "\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   ].find((path) => fs.existsSync(path));
@@ -177,7 +179,11 @@ async function criarClienteWhatsApp() {
 
   // Limpar sessão anterior se existir
   try {
-    const lockfile = path.join(sessionDir, 'session-whatsapp-bot-client', 'lockfile');
+    const lockfile = path.join(
+      sessionDir,
+      "session-whatsapp-bot-client",
+      "lockfile"
+    );
     if (fs.existsSync(lockfile)) {
       fs.unlinkSync(lockfile);
     }
@@ -189,7 +195,7 @@ async function criarClienteWhatsApp() {
     authStrategy: new whatsapp.LocalAuth({
       dataPath: sessionDir,
       clientId: "whatsapp-bot-client",
-      bypassPathCheck: true
+      bypassPathCheck: true,
     }),
     puppeteer: {
       headless: false,
@@ -199,14 +205,14 @@ async function criarClienteWhatsApp() {
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
         "--single-process", // Adicionado para melhor estabilidade
-        "--no-zygote"
+        "--no-zygote",
       ],
       timeout: 60000,
-      ignoreDefaultArgs: ["--disable-extensions"]
+      ignoreDefaultArgs: ["--disable-extensions"],
     },
     takeoverOnConflict: false, // Alterado para false para evitar conflitos
     qrMaxRetries: 3, // Aumentado para mais tentativas
-    restartOnAuthFail: true
+    restartOnAuthFail: true,
   });
 
   return client;
@@ -221,7 +227,7 @@ function configurarEventosWhatsApp(client) {
   client.on("qr", async (qr) => {
     if (qrCodeGenerated) return; // Evitar gerar múltiplos QR Codes
     qrCodeGenerated = true;
-    
+
     console.log("🔎 QR Code recebido - Escaneie para autenticar");
     const qrCodePath = path.join(tempDir, "qrcode.png");
 
@@ -231,7 +237,7 @@ function configurarEventosWhatsApp(client) {
       console.log(`📷 QR Code salvo em: ${qrCodePath}`);
 
       // Tentar abrir a imagem automaticamente
-      if (process.platform === 'win32') {
+      if (process.platform === "win32") {
         exec(`start "" "${qrCodePath}"`, (error) => {
           if (error) {
             console.log("ℹ️ Não foi possível abrir a imagem automaticamente.");
@@ -247,7 +253,6 @@ function configurarEventosWhatsApp(client) {
       //     console.log(qrTerminal);
       //   }
       // });
-
     } catch (err) {
       console.error("❌ Erro ao gerar QR Code:", err);
       registrarErroDetalhado(err, "Erro ao gerar QR Code");
@@ -270,7 +275,7 @@ function configurarEventosWhatsApp(client) {
     console.error("❌ Falha na autenticação:", msg);
     registrarErroDetalhado(new Error(msg), "Falha na autenticação");
     qrCodeGenerated = false; // Permitir novo QR Code
-    
+
     if (!reconectando) {
       setTimeout(() => reconectarClient(client), 5000);
     }
@@ -287,7 +292,7 @@ function configurarEventosWhatsApp(client) {
     console.log("🚨 Desconectado:", reason);
     registrarErroDetalhado(new Error(reason), "Conexão perdida");
     qrCodeGenerated = false;
-    
+
     if (!reconectando) {
       reconectando = true;
       await reconectarClient(client);
@@ -303,23 +308,25 @@ function configurarEventosWhatsApp(client) {
   // Evento de mensagem recebida
   client.on("message", (msg) => {
     if (msg.fromMe) return; // Ignorar mensagens enviadas pelo próprio bot
-    
+
     // Exemplo: Responder mensagens específicas
-    if (msg.body.toLowerCase() === 'ping') {
-      client.sendMessage(msg.from, 'Pong!');
+    if (msg.body.toLowerCase() === "ping") {
+      client.sendMessage(msg.from, "Pong!");
     }
   });
 
   // Ping periódico para manter conexão ativa
   const keepAliveInterval = setInterval(() => {
     if (client && client.pupPage && !client.pupPage.isClosed()) {
-      client.pupPage.evaluate(() => {
-        try {
-          window.Store.Presence.setAvailable();
-        } catch (e) {
-          console.error("Erro no ping de conexão:", e);
-        }
-      }).catch(() => {});
+      client.pupPage
+        .evaluate(() => {
+          try {
+            window.Store.Presence.setAvailable();
+          } catch (e) {
+            console.error("Erro no ping de conexão:", e);
+          }
+        })
+        .catch(() => {});
     }
   }, 30000);
 
@@ -363,59 +370,74 @@ async function enviarMensagens(client) {
     console.error(
       `❌ Licença inválida durante o envio: ${licenseCheck.reason}`
     );
-    return;
+    return null;
   }
 
-  const numerosPath = path.join(configDir, "numeros.txt");
-  const mensagemPath = path.join(configDir, "mensagem.txt");
+  const messageManager = new MessageManager(configDir, logsDir);
+  messageManager.initNewSession();
 
-  // Criar arquivos de exemplo se não existirem
-  if (!fs.existsSync(numerosPath)) {
-    fs.writeFileSync(numerosPath, "5511999999999\n5511888888888");
-  }
-  if (!fs.existsSync(mensagemPath)) {
-    fs.writeFileSync(mensagemPath, "Olá, esta é uma mensagem de teste!");
-  }
+  try {
+    const numeros = await messageManager.loadContacts();
+    const mensagem = await messageManager.loadMessage();
 
-  const numeros = fs
-    .readFileSync(numerosPath, "utf8")
-    .split("\n")
-    .map((n) => n.trim())
-    .filter((n) => n && !n.startsWith("//"))
-    .map((n) => n.replace(/\D/g, "") + "@c.us");
+    console.log(`📤 Iniciando envio para ${numeros.length} números...`);
 
-  const mensagem = fs.readFileSync(mensagemPath, "utf8");
+    for (const numero of numeros) {
+      try {
+        const contato = await client.getNumberId(numero);
+        if (!contato) {
+          messageManager.logMessageSent(
+            numero,
+            false,
+            new Error("Número não encontrado")
+          );
+          continue;
+        }
 
-  console.log(`📤 Iniciando envio para ${numeros.length} números...`);
+        await client.sendMessage(contato._serialized, mensagem);
+        messageManager.logMessageSent(numero, true);
 
-  let enviadas = 0,
-    falhas = 0;
-  const numerosComFalha = [];
-
-  for (const numero of numeros) {
-    try {
-      const contato = await client.getNumberId(numero);
-      if (!contato) {
-        falhas++;
-        numerosComFalha.push(numero.replace("@c.us", ""));
-        continue;
+        // Delay aleatório entre 1-3 segundos
+        await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
+      } catch (error) {
+        messageManager.logMessageSent(numero, false, error);
       }
-
-      await client.sendMessage(contato._serialized, mensagem);
-      enviadas++;
-      await new Promise((r) => setTimeout(r, 1000 + Math.random() * 2000));
-    } catch (error) {
-      falhas++;
-      numerosComFalha.push(numero.replace("@c.us", ""));
     }
-  }
 
-  console.log(`
-📋 RESUMO DO ENVIO:
-✅ Enviadas: ${enviadas}
-❌ Falhas: ${falhas}
-${falhas > 0 ? `📝 Números com falha:\n${numerosComFalha.join("\n")}` : ""}
+    // Finaliza a sessão e obtém estatísticas
+    const stats = messageManager.finalizeSession();
+
+    if (stats) {
+      console.log(`
+========================
+   📋 RESUMO DO ENVIO:
+========================
+  📤 Total de números processados: ${stats.total}
+  ✅ Total de mensagens enviadas com sucesso: ${stats.success} (${
+        stats.successPercent
+      }%)
+  ❌ Total de mensagens não enviadas: ${stats.failed} (${stats.failedPercent}%)
+  ⏱  Duração: ${stats.duration}
+${
+  stats.failed > 0
+    ? `
+===========================
+  ⚠️  NÚMEROS COM FALHAS:
+===========================
+    \n${stats.failedNumbers.join("\n")}  
+        `
+    : ""
+}
 `);
+    }
+
+    return stats;
+  } catch (error) {
+    console.error("❌ Erro no processo de envio:", error);
+    messageManager.logMessageSent("GLOBAL", false, error);
+    const stats = messageManager.finalizeSession();
+    return stats || { success: 0, failed: 1, failedNumbers: ["Erro global"] };
+  }
 }
 
 // ==================== FUNÇÃO PRINCIPAL ====================
@@ -484,7 +506,6 @@ async function main() {
 
     // 6. Manter processo ativo
     await new Promise(() => {});
-
   } catch (error) {
     console.error("❌ Erro no processo principal:", error.message);
     await aguardarTeclaParaSair();
