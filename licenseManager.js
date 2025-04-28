@@ -141,8 +141,8 @@ class LicenseManager {
       (expirationDate - currentTime) / (1000 * 60 * 60 * 24)
     );
 
-    if (daysLeft <= 7) {
-      console.log("\n⚠️ ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
+    if (daysLeft <= 30) {
+      console.log("\n⚠️  ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
       console.log(
         `📅 Data de expiração: ${expirationDate.toLocaleDateString()}`
       );

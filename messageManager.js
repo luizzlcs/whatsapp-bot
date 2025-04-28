@@ -62,11 +62,13 @@ class MessageManager {
     const mensagemPath = path.join(this.configDir, "mensagem.txt");
 
     if (!fs.existsSync(mensagemPath)) {
-      const conteudoPadrao = `Olá! Esta é uma mensagem de exemplo.
- Modifique este arquivo com sua mensagem real.
+      const conteudoPadrao = 
+`Olá! Esta é uma mensagem de exemplo.
+
+Modifique este arquivo com sua mensagem real.
     
 Atenciosamente,
-Seu Nome`;
+WhastApp Bot`;
 
       fs.writeFileSync(mensagemPath, conteudoPadrao);
       return conteudoPadrao;
