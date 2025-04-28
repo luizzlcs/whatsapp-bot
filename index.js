@@ -1,3 +1,6 @@
+// Gerar Executável para windows: pkg index.js --targets win-x64 --output whatsapp-bot.exe
+
+const MessageManager = require("./messageManager");
 // Fix para axios em executáveis
 if (process.pkg) {
   const path = require("path");
@@ -44,7 +47,7 @@ const crypto = require("crypto");
 const dgram = require("dgram");
 const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
-const MessageManager = require("./messageManager");
+const chalk = require('chalk');
 
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
@@ -81,6 +84,17 @@ function formatarDataHora(date) {
 
 function formatarNomeArquivoData(date) {
   return formatarDataHora(date).replace(/[\/: ]/g, "-");
+}
+
+function showBotAlreadyRunning() {
+  console.log('\n');
+  console.log(chalk.red('╔══════════════════════════════════════════════════╗'));
+  console.log(chalk.red('║ 🚫 ATENÇÃO:                                      ║'));
+  console.log(chalk.red('║                                                  ║'));
+  console.log(chalk.red('║  O WhatsApp Bot já está em execução!             ║'));
+  console.log(chalk.red('║                                                  ║'));
+  console.log(chalk.red('╚══════════════════════════════════════════════════╝'));
+  console.log('\n');
 }
 
 function registrarErroDetalhado(error, contexto = "Erro não especificado") {
@@ -167,7 +181,8 @@ class TimeSecurity {
 async function criarClienteWhatsApp() {
   const chromePath = [
     process.env.PROGRAMFILES + "\\Google\\Chrome\\Application\\chrome.exe",
-    process.env["PROGRAMFILES(X86)"] + "\\Google\\Chrome\\Application\\chrome.exe",
+    process.env["PROGRAMFILES(X86)"] +
+      "\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
   ].find((path) => fs.existsSync(path));
@@ -183,23 +198,28 @@ async function criarClienteWhatsApp() {
       "session-whatsapp-bot-client",
       "lockfile"
     );
-    
+
     if (fs.existsSync(lockfile)) {
-      console.error("\n🚫 ATENÇÃO: O WhatsApp Bot já está em execução!");
-      console.log("Por favor, feche a aplicação existente antes de iniciar uma nova instância.");
+      showBotAlreadyRunning();
+      // console.error("\n🚫 ATENÇÃO: O WhatsApp Bot já está em execução!");
+      console.log(
+        "Por favor, feche a aplicação existente antes de iniciar uma nova instância."
+      );
       console.log("\nSe você acredita que isto é um erro, pode tentar:");
       console.log("1. Fechar todas as instâncias do WhatsApp Bot");
       console.log("2. Reiniciar seu computador");
       console.log("3. Excluir manualmente o arquivo de lock em:");
       console.log(lockfile);
-      
+
       await aguardarTeclaParaSair();
       process.exit(1);
     }
   } catch (e) {
-    if (e.code === 'EBUSY') {
+    if (e.code === "EBUSY") {
       console.error("\n🚫 ATENÇÃO: O WhatsApp Bot já está em execução!");
-      console.log("Por favor, feche a aplicação existente antes de iniciar uma nova instância.");
+      console.log(
+        "Por favor, feche a aplicação existente antes de iniciar uma nova instância."
+      );
       await aguardarTeclaParaSair();
       process.exit(1);
     } else {
@@ -541,7 +561,9 @@ async function main() {
     console.log(`👤 Nome: ${licenseCheck.userData.name}`);
     console.log(`📧 Email: ${licenseCheck.userData.email}`);
     console.log(
-      `📅 Expiração: ${licenseCheck.userData.expirationDate.toLocaleDateString()}`
+      `📅 Expiração: ${new Date(
+        licenseCheck.userData.expirationDate
+      ).toLocaleDateString()}`
     );
     console.log(`🕒 ${formatarDataHora(localTime)} | Fonte: Local`);
     console.log(
@@ -589,6 +611,8 @@ async function main() {
     console.error("❌ Erro no processo principal:", error.message);
     await aguardarTeclaParaSair();
     process.exit(1);
+  } finally {
+    licenseManager.closeReadline();
   }
 }
 

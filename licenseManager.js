@@ -1,6 +1,7 @@
-const fs = require("fs");
+const fs = require("fs").promises;
 const path = require("path");
-const readline = require("readline");
+const readline = require("readline").promises;
+const crypto = require("crypto");
 const { mostrarLoading } = require("./utils");
 const firebaseService = require("./firebaseService");
 
@@ -8,124 +9,145 @@ class LicenseManager {
   constructor() {
     this.sessionDir = path.join(
       process.pkg ? path.dirname(process.execPath) : __dirname,
-      ".wwebjs_auth",
-      "session"
+      ".wwebjs_auth"
     );
-    this.emailPath = path.join(this.sessionDir, "email.json");
-    this.devicePath = path.join(this.sessionDir, "device.json");
+    this.cacheFile = path.join(this.sessionDir, "license_cache.json");
+    this.cacheDurationDays = 5;
+    this.rl = readline.createInterface({ // Criar a interface no construtor
+      input: process.stdin,
+      output: process.stdout,
+    });
   }
 
   async ensureSessionDir() {
-    if (!fs.existsSync(this.sessionDir)) {
-      fs.mkdirSync(this.sessionDir, { recursive: true });
+    try {
+      await fs.mkdir(this.sessionDir, { recursive: true });
+    } catch (error) {
+      console.error("Erro ao criar diretório de sessão:", error);
     }
   }
 
-  async getStoredEmail() {
+  async getCachedLicenseData() {
     try {
       await this.ensureSessionDir();
-      if (fs.existsSync(this.emailPath)) {
-        const data = fs.readFileSync(this.emailPath, "utf8");
-        const { email } = JSON.parse(data);
-        return email;
+      if (await this.fileExists(this.cacheFile)) {
+        const data = await fs.readFile(this.cacheFile, "utf8");
+        const cachedData = JSON.parse(data);
+        if (cachedData && cachedData.hash && cachedData.data) {
+          const currentHash = this.generateHash(JSON.stringify(cachedData.data));
+          if (currentHash === cachedData.hash) {
+            return cachedData.data;
+          } else {
+            console.warn("⚠️ Cache de licença corrompido. Revalidando.");
+            return null;
+          }
+        }
       }
       return null;
     } catch (error) {
-      console.error("Erro ao ler email salvo:", error);
+      console.error("Erro ao ler dados do cache:", error);
       return null;
     }
   }
 
-  async getStoredDeviceId() {
+  async saveLicenseDataToCache(licenseData, deviceId) {
     try {
       await this.ensureSessionDir();
-      if (fs.existsSync(this.devicePath)) {
-        const data = fs.readFileSync(this.devicePath, "utf8");
-        const { deviceId } = JSON.parse(data);
-        return deviceId;
-      }
-      return null;
-    } catch (error) {
-      console.error("Erro ao ler dispositivo salvo:", error);
-      return null;
-    }
-  }
-
-  async saveSessionData(email, deviceId) {
-    try {
-      await this.ensureSessionDir();
-
-      fs.writeFileSync(this.emailPath, JSON.stringify({ email }), "utf8");
-
-      fs.writeFileSync(this.devicePath, JSON.stringify({ deviceId }), "utf8");
-
+      const dataToCache = { ...licenseData, deviceId, lastValidation: Date.now() };
+      const hash = this.generateHash(JSON.stringify(dataToCache));
+      const cacheEntry = { hash, data: dataToCache };
+      await fs.writeFile(this.cacheFile, JSON.stringify(cacheEntry), "utf8");
       return true;
     } catch (error) {
-      console.error("Erro ao salvar dados da sessão:", error);
+      console.error("Erro ao salvar dados no cache:", error);
       return false;
     }
   }
 
-  async promptForEmail() {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
+  generateHash(data) {
+    return crypto.createHash("sha256").update(data).digest("hex");
+  }
 
-    return new Promise((resolve) => {
-      rl.question("📧 Digite o email cadastrado na sua licença: ", (email) => {
-        rl.close();
-        resolve(email.trim());
-      });
-    });
+  async promptForEmail() {
+    try {
+      const email = await this.rl.question("📧 Digite o email cadastrado na sua licença: ");
+      return email.trim();
+    } finally {
+      // Não fechar aqui, a interface será fechada em closeReadline
+    }
+  }
+
+  async fileExists(filePath) {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   async validateLicense() {
     let loading = mostrarLoading("🔍 Verificando licença");
     try {
-      // 1. Obter email do usuário
-      let email = await this.getStoredEmail();
-      if (!email) {
+      let cachedData = await this.getCachedLicenseData();
+      let email;
+      let deviceId;
+
+      // console.log("Log: Dados do cache:", cachedData); // ADICIONE ESTE LOG
+
+      if (cachedData && cachedData.email && Date.now() - cachedData.lastValidation < this.cacheDurationDays * 24 * 60 * 60 * 1000) {
+        email = cachedData.email;
+        deviceId = cachedData.deviceId;
         loading.stop();
-        email = await this.promptForEmail();
-        if (!email) {
-          return { valid: false, reason: "Email não fornecido" };
+        console.log("⚡️ Licença validada.");
+        const expirationCheck = await this.checkExpirationWarning(cachedData);
+        if (!expirationCheck.continue) {
+          return { valid: false, reason: "Usuário cancelou devido à expiração" };
         }
-        loading = mostrarLoading("🔍 Verificando licença");
+        return { valid: true, userData: { ...cachedData, daysLeft: expirationCheck.daysLeft }, deviceId };
+      } else {
+        // Cache expirado ou inexistente, precisa revalidar
+        if (cachedData && cachedData.email) {
+          email = cachedData.email;
+          deviceId = cachedData.deviceId || firebaseService.generateDeviceId();
+          console.log("Log: Cache expirado/inválido, e-mail do cache:", email, "deviceId:", deviceId); // ADICIONE ESTE LOG
+        } else {
+          loading.stop();
+          // console.log("Log: Solicitando e-mail ao usuário..."); // ADICIONE ESTE LOG
+          email = await this.promptForEmail();
+          // console.log("Log: E-mail fornecido pelo usuário:", email); // ADICIONE ESTE LOG
+          if (!email) {
+            return { valid: false, reason: "Email não fornecido" };
+          }
+          deviceId = firebaseService.generateDeviceId();
+          // console.log("Log: Novo deviceId gerado:", deviceId); // ADICIONE ESTE LOG
+          loading = mostrarLoading("🔍 Verificando licença");
+        }
+
+        // console.log("Log: Chamando firebaseService.validateLicense com e-mail:", email, "deviceId:", deviceId); // ADICIONE ESTE LOG
+        const validation = await firebaseService.validateLicense(email, deviceId);
+        loading.stop();
+
+        // console.log("Log: Resultado da validação do Firebase:", validation); // ADICIONE ESTE LOG
+
+        if (!validation.valid) {
+          return validation;
+        }
+
+        const expirationCheck = await this.checkExpirationWarning(validation.userData);
+        if (!expirationCheck.continue) {
+          return { valid: false, reason: "Usuário cancelou devido à expiração" };
+        }
+
+        await this.saveLicenseDataToCache({ ...validation.userData, email }, deviceId);
+        // console.log("Log: Dados da licença salvos no cache."); // ADICIONE ESTE LOG
+
+        return {
+          valid: true,
+          userData: { ...validation.userData, daysLeft: expirationCheck.daysLeft },
+          deviceId,
+        };
       }
-
-      // 2. Gerar/recuperar ID do dispositivo (REMOVA O CONSOLE.LOG DAQUI)
-      let deviceId = await this.getStoredDeviceId();
-      if (!deviceId) {
-        deviceId = firebaseService.generateDeviceId();
-      }
-
-      // 3. Validar licença no Firebase
-      const validation = await firebaseService.validateLicense(email, deviceId);
-      loading.stop();
-      if (!validation.valid) {
-        return validation;
-      }
-
-      // 4. Verificar expiração próxima
-      const expirationCheck = await this.checkExpirationWarning(
-        validation.userData
-      );
-      if (!expirationCheck.continue) {
-        return { valid: false, reason: "Usuário cancelou devido à expiração" };
-      }
-
-      // 5. Salvar dados da sessão
-      await this.saveSessionData(email, deviceId);
-
-      return {
-        valid: true,
-        userData: {
-          ...validation.userData,
-          daysLeft: expirationCheck.daysLeft,
-        },
-        deviceId: deviceId,
-      };
     } catch (error) {
       console.error("Erro na validação da licença:", error);
       return { valid: false, reason: error.message };
@@ -142,26 +164,19 @@ class LicenseManager {
     );
 
     if (daysLeft <= 30) {
-      console.log("\n⚠️  ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
+      console.log("\n⚠️  ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
       console.log(
         `📅 Data de expiração: ${expirationDate.toLocaleDateString()}`
       );
       console.log(`⏳ Dias restantes: ${daysLeft}`);
 
-      const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      });
-
-      const answer = await new Promise((resolve) => {
-        rl.question("Deseja continuar mesmo assim? (s/n): ", (input) => {
-          rl.close();
-          resolve(input.trim().toLowerCase() === "s");
-        });
-      });
-
-      if (!answer) {
-        return { continue: false, daysLeft };
+      try {
+        const answer = await this.rl.question("Deseja continuar mesmo assim? (s/n): ");
+        if (!answer.trim().toLowerCase() === "s") {
+          return { continue: false, daysLeft };
+        }
+      } finally {
+        // Não fechar aqui
       }
     }
 
@@ -183,6 +198,11 @@ class LicenseManager {
       return null;
     }
   }
+  async closeReadline() {
+    this.rl.close();
+  }
 }
 
-module.exports = new LicenseManager();
+const licenseManagerInstance = new LicenseManager();
+module.exports = licenseManagerInstance;
+// module.exports = new LicenseManager();

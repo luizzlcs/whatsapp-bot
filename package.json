@@ -2,10 +2,10 @@
   "name": "whatsapp-bot",
   "version": "1.0.0",
   "description": "Bot de envio de mensagens WhatsApp",
-  "main": "bot.js",
-  "bin": "bot.js",
+  "main": "index.js",
+  "bin": "index.js",
   "scripts": {
-    "start": "node bot.js",
+    "start": "node index.js",
     "build": "pkg . --targets node18-win-x64 --output whatsapp-bot.exe --options expose-gc --public",
     "build:prod": "pkg . --targets node18-win-x64 --output whatsapp-bot.exe --options expose-gc --public --no-bytecode",
     "test": "echo \"Error: no test specified\" && exit 1"
