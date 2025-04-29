@@ -36,7 +36,7 @@ function mostrarLoading(mensagemInicial = "Verificando") {
     "[▰▰▱▱▱▱▱]",
   ];
   let i = 0;
-  const mensagemBase = `🔍 ${mensagemInicial} `;
+  const mensagemBase = ` ${mensagemInicial} `;
 
   const interval = setInterval(() => {
     process.stdout.clearLine(process.stdout.columns);

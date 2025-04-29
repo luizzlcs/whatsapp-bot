@@ -110,8 +110,6 @@ function registrarErroDetalhado(error, contexto = "Erro não especificado") {
 Data/Hora: ${formatarDataHora(new Date())}
 Contexto: ${contexto}
 Mensagem: ${error.message}
-Stack Trace:
-${error.stack}
 ===========================`;
 
     fs.writeFileSync(logPath, mensagemErro, "utf8");
