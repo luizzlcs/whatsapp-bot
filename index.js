@@ -47,7 +47,7 @@ const crypto = require("crypto");
 const dgram = require("dgram");
 const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
-const chalk = require('chalk');
+const chalk = require("chalk");
 
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
@@ -87,16 +87,27 @@ function formatarNomeArquivoData(date) {
 }
 
 function showBotAlreadyRunning() {
-  console.log('\n');
-  console.log(chalk.red('╔══════════════════════════════════════════════════╗'));
-  console.log(chalk.red('║ 🚫 ATENÇÃO:                                      ║'));
-  console.log(chalk.red('║                                                  ║'));
-  console.log(chalk.red('║  O WhatsApp Bot já está em execução!             ║'));
-  console.log(chalk.red('║                                                  ║'));
-  console.log(chalk.red('╚══════════════════════════════════════════════════╝'));
-  console.log('\n');
+  console.log("\n");
+  console.log(
+    chalk.red("╔══════════════════════════════════════════════════╗")
+  );
+  console.log(
+    chalk.red("║ 🚫 ATENÇÃO:                                      ║")
+  );
+  console.log(
+    chalk.red("║                                                  ║")
+  );
+  console.log(
+    chalk.red("║  O WhatsApp Bot já está em execução!             ║")
+  );
+  console.log(
+    chalk.red("║                                                  ║")
+  );
+  console.log(
+    chalk.red("╚══════════════════════════════════════════════════╝")
+  );
+  console.log("\n");
 }
-
 
 function registrarErroDetalhado(error, contexto = "Erro não especificado") {
   try {
@@ -543,48 +554,48 @@ async function main() {
   const localTime = new Date();
 
   try {
-    // =============  VERIFICAÇÃO DE LICENÇA =============
+    // ============= VERIFICAÇÃO DE LICENÇA =============
     console.log(
       "🕒 " + formatarDataHora(new Date()) + " | Iniciando verificação"
     );
 
     const licenseCheck = await licenseManager.validateLicense();
-    // 1. Validar licença
     if (!licenseCheck.valid) {
       console.error(`❌ ${licenseCheck.reason}`);
+      licenseManager.showSolution();
       await aguardarTeclaParaSair();
       process.exit(1);
     }
 
-    console.log("\n✅ Licença válida! Detalhes:");
-    console.log(`👤 Nome: ${licenseCheck.userData.name}`);
-    console.log(`📧 Email: ${licenseCheck.userData.email}`);
-    console.log(
-      `📅 Expiração: ${new Date(
-        licenseCheck.userData.expirationDate
-      ).toLocaleDateString()}`
-    );
-    console.log(`🕒 ${formatarDataHora(localTime)} | Fonte: Local`);
-    console.log(
-      `💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`
-    );
-    console.log(`🖥️  ID do dispositivo: ${licenseCheck.deviceId}`);
+    // Exibir informações da licença apenas uma vez
+    if (licenseCheck.userData) {
+      console.log("\n✅ Licença válida! Detalhes:");
+      console.log(`👤 Nome: ${licenseCheck.userData.name}`);
+      console.log(`📧 Email: ${licenseCheck.userData.email}`);
+      console.log(
+        `📅 Expiração: ${new Date(
+          licenseCheck.userData.expirationDate
+        ).toLocaleDateString()}`
+      );
+      console.log(`🕒 ${formatarDataHora(localTime)} | Fonte: Local`);
+      console.log(
+        `💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`
+      );
+      console.log(`🖥️ ID do dispositivo: ${licenseCheck.deviceId}`);
 
-    // ============= FIM DO BLOCO DE VERIFICAÇÃO DE LICENÇA =============
+      if (licenseCheck.userData.daysLeft <= 30) {
+        console.log(
+          `⚠️  Sua licença expira em ${licenseCheck.userData.daysLeft} dias!`
+        );
+      }
+    }
 
-    // 1. Iniciar WhatsApp Client
     // ============= INICIALIZAÇÃO DO WHATSAPP =============
     console.log("🔴 Iniciando WhatsApp Bot...");
     const client = await criarClienteWhatsApp();
-
-    // 2. Configurar eventos ANTES de inicializar
     configurarEventosWhatsApp(client);
-
-    // 3. Inicializar o cliente
     await client.initialize();
-    // await new Promise((resolve) => client.once("ready", resolve));
 
-    // 4. Aguardar autenticação/ready
     await new Promise((resolve) => {
       const readyHandler = () => {
         client.off("ready", readyHandler);
@@ -592,19 +603,18 @@ async function main() {
       };
       client.on("ready", readyHandler);
 
-      // Timeout para evitar espera infinita
       setTimeout(() => {
         if (!client.pupPage) {
           console.error("❌ Tempo excedido aguardando autenticação");
           process.exit(1);
         }
-      }, 300000); // 5 minutos de timeout
+      }, 300000);
     });
 
-    // 5. Iniciar envio de mensagens
+    // Iniciar envio de mensagens
     await enviarMensagens(client);
 
-    // 6. Manter processo ativo
+    // Manter processo ativo
     await new Promise(() => {});
   } catch (error) {
     console.error("❌ Erro no processo principal:", error.message);
