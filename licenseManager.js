@@ -5,6 +5,17 @@ const crypto = require("crypto");
 const { mostrarLoading } = require("./utils");
 const firebaseService = require("./firebaseService");
 
+
+function showSolution(){
+  console.log('\n');
+  console.log(chalk.green('🔁 Mas calma, isso tem solução!'));
+  console.log(chalk.green('Se você já renovou sua licença ou deseja reativar o acesso, entre em contato com o suporte:'));
+  console.log(chalk.green('📩 Email: luizzlcs@gmail.com'));
+  console.log(chalk.green('💬 Telegram: https://t.me/luizzlcs'));
+  console.log(chalk.green('Obrigado por usar nosso aplicativo 💙'));
+  console.log(chalk.green('Estamos prontos para te ajudar!'));
+}
+
 class LicenseManager {
   constructor() {
     this.sessionDir = path.join(
@@ -166,9 +177,10 @@ class LicenseManager {
     if (daysLeft <= 30) {
       console.log("\n⚠️  ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
       console.log(
-        `📅 Data de expiração: ${expirationDate.toLocaleDateString()}`
+        `📅 Data de expiração: ${expirationDate.toLocaleString()}`
       );
       console.log(`⏳ Dias restantes: ${daysLeft}`);
+      
 
       try {
         const answer = await this.rl.question("Deseja continuar mesmo assim? (s/n): ");

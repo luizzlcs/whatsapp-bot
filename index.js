@@ -97,6 +97,7 @@ function showBotAlreadyRunning() {
   console.log('\n');
 }
 
+
 function registrarErroDetalhado(error, contexto = "Erro não especificado") {
   try {
     const logDir = path.join(execDir, "logs");

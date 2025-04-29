@@ -190,7 +190,7 @@ class FirebaseService {
       const userDoc = await getDoc(userRef);
 
       if (!userDoc.exists()) {
-        return { valid: false, reason: "Email não cadastrado" };
+        return { valid: false, reason: "Aguardando ativação do seu e-mail. Se você já adquiriu a licença, tente novamente em breve." };
       }
 
       const userData = userDoc.data();
@@ -202,7 +202,7 @@ class FirebaseService {
 
       const expirationDate = new Date(userData.expirationDate);
       if (currentTime > expirationDate) {
-        return { valid: false, reason: "Licença expirada" };
+        return { valid: false, reason: "Sua licença expirou 😕" };
       }
 
       // Gerenciamento de dispositivos
