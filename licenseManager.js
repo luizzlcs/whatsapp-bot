@@ -21,6 +21,20 @@ class LicenseManager {
     this.licenseChecked = false; // Adicionado para controlar se a verificação já foi feita
   }
 
+  showSolution() {
+    console.log("\n");
+    console.log(chalk.green("🔁 Mas calma, isso tem solução!"));
+    console.log(
+      chalk.green(
+        "Se você já renovou sua licença ou deseja reativar o acesso, entre em contato com o suporte:"
+      )
+    );
+    console.log(chalk.redBright("📩 Email: luizzlcs@gmail.com"));
+    console.log(chalk.redBright("💬 Telegram: https://t.me/luizzlcs"));
+    console.log(chalk.green("Obrigado por usar nosso aplicativo 💙"));
+    console.log(chalk.green("Estamos prontos para te ajudar!"));
+  }
+
   async ensureSessionDir() {
     try {
       await fs.mkdir(this.sessionDir, { recursive: true });
@@ -102,9 +116,12 @@ class LicenseManager {
     console.log(`⏳ Dias restantes: ${daysLeft}`);
 
     try {
+      this.showSolution();
+
       const answer = await this.rl.question(
         "Deseja continuar mesmo assim? (s/n): "
       );
+
       return answer.trim().toLowerCase() === "s";
     } catch (error) {
       return false;
@@ -238,20 +255,6 @@ class LicenseManager {
 
   async closeReadline() {
     this.rl.close();
-  }
-
-  showSolution() {
-    console.log("\n");
-    console.log(chalk.green("🔁 Mas calma, isso tem solução!"));
-    console.log(
-      chalk.green(
-        "Se você já renovou sua licença ou deseja reativar o acesso, entre em contato com o suporte:"
-      )
-    );
-    console.log(chalk.green("📩 Email: luizzlcs@gmail.com"));
-    console.log(chalk.green("💬 Telegram: https://t.me/luizzlcs"));
-    console.log(chalk.green("Obrigado por usar nosso aplicativo 💙"));
-    console.log(chalk.green("Estamos prontos para te ajudar!"));
   }
 }
 
