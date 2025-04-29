@@ -292,13 +292,7 @@ function configurarEventosWhatsApp(client) {
         });
       }
 
-      // Mostrar QR Code no terminal como fallback
-      // qrcode.toString(qr, { type: 'terminal' }, (err, qrTerminal) => {
-      //   if (!err) {
-      //     console.log("\n🔢 QR Code para escaneamento (terminal):");
-      //     console.log(qrTerminal);
-      //   }
-      // });
+      
     } catch (err) {
       console.error("❌ Erro ao gerar QR Code:", err);
       registrarErroDetalhado(err, "Erro ao gerar QR Code");
@@ -573,9 +567,9 @@ async function main() {
       console.log(`👤 Nome: ${licenseCheck.userData.name}`);
       console.log(`📧 Email: ${licenseCheck.userData.email}`);
       console.log(
-        `📅 Expiração: ${new Date(
-          licenseCheck.userData.expirationDate
-        ).toLocaleDateString()}`
+        `📅 Expiração: ${formatarDataHora(
+          new Date(licenseCheck.userData.expirationDate)
+        )}`
       );
       console.log(`🕒 ${formatarDataHora(localTime)} | Fonte: Local`);
       console.log(
@@ -585,7 +579,7 @@ async function main() {
 
       if (licenseCheck.userData.daysLeft <= 30) {
         console.log(
-          `⚠️  Sua licença expira em ${licenseCheck.userData.daysLeft} dias!`
+          `⚠️  Sua licença expira em ${licenseCheck.userData.daysLeft} dia(s)!`
         );
       }
     }

@@ -3,6 +3,7 @@ const path = require("path");
 const readline = require("readline").promises;
 const crypto = require("crypto");
 const { mostrarLoading } = require("./utils");
+const { formatarDataHora } = require("./utils");
 const firebaseService = require("./firebaseService");
 const chalk = require("chalk");
 
@@ -112,7 +113,7 @@ class LicenseManager {
 
   async showExpirationWarning(daysLeft, expirationDate) {
     console.log("\n⚠️  ATENÇÃO: SUA LICENÇA IRÁ EXPIRAR EM BREVE ⚠️");
-    console.log(`📅 Data de expiração: ${expirationDate.toLocaleString()}`);
+    console.log(`📅 Data de expiração: ${formatarDataHora(new Date(expirationDate)) }`);
     console.log(`⏳ Dias restantes: ${daysLeft}`);
 
     try {
