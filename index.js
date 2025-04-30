@@ -98,7 +98,7 @@ function showBotAlreadyRunning() {
     chalk.red("║                                                  ║")
   );
   console.log(
-    chalk.red("║  O WhatsApp Bot já está em execução!             ║")
+    chalk.red("║  O Send Message já está em execução!             ║")
   );
   console.log(
     chalk.red("║                                                  ║")
@@ -216,7 +216,7 @@ async function criarClienteWhatsApp() {
         "Por favor, feche a aplicação existente antes de iniciar uma nova instância."
       );
       console.log("\nSe você acredita que isto é um erro, pode tentar:");
-      console.log("1. Fechar todas as instâncias do WhatsApp Bot");
+      console.log("1. Fechar todas as instâncias do WhatsApp Send Message");
       console.log("2. Reiniciar seu computador");
       console.log("3. Excluir manualmente o arquivo de lock em:");
       console.log(lockfile);
@@ -226,7 +226,7 @@ async function criarClienteWhatsApp() {
     }
   } catch (e) {
     if (e.code === "EBUSY") {
-      console.error("\n🚫 ATENÇÃO: O WhatsApp Bot já está em execução!");
+      console.error("\n🚫 ATENÇÃO: O Send Message já está em execução!");
       console.log(
         "Por favor, feche a aplicação existente antes de iniciar uma nova instância."
       );
@@ -323,7 +323,7 @@ function configurarEventosWhatsApp(client) {
 
   // Evento quando o cliente está pronto
   client.on("ready", () => {
-    console.log("✅ WhatsApp Client pronto para uso");
+    // console.log("✅ WhatsApp Client pronto para uso");
     qrCodeGenerated = false;
   });
 
@@ -575,7 +575,7 @@ async function main() {
       console.log(
         `💻 Dispositivos: ${licenseCheck.userData.activeDevices}/${licenseCheck.userData.maxDevices} ativos`
       );
-      console.log(`🖥️ ID do dispositivo: ${licenseCheck.deviceId}`);
+      
 
       if (licenseCheck.userData.daysLeft <= 30) {
         console.log(
@@ -585,7 +585,7 @@ async function main() {
     }
 
     // ============= INICIALIZAÇÃO DO WHATSAPP =============
-    console.log("🔴 Iniciando WhatsApp Bot...");
+    console.log("🔴 Iniciando WhatsApp Send Message...");
     const client = await criarClienteWhatsApp();
     configurarEventosWhatsApp(client);
     await client.initialize();

@@ -46,7 +46,11 @@ class MessageManager {
     const numerosPath = path.join(this.configDir, "numeros.txt");
 
     if (!fs.existsSync(numerosPath)) {
-      fs.writeFileSync(numerosPath, "5511999999999\n5511888888888");
+      fs.writeFileSync(numerosPath, `5511999999999\n5511888888888
+\n📲 Coloque um contato por linha,
+como se estivesse fazendo uma lista,
+um abaixo do outro.`);
+
       return [];
     }
 
@@ -68,7 +72,7 @@ class MessageManager {
 Modifique este arquivo com sua mensagem real.
     
 Atenciosamente,
-WhastApp Bot`;
+Send Message`;
 
       fs.writeFileSync(mensagemPath, conteudoPadrao);
       return conteudoPadrao;
