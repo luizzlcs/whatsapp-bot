@@ -1,4 +1,5 @@
-// Gerar Executável para windows: pkg index.js --targets win-x64 --output whatsapp-bot.exe
+// Gerar Executável para windows: pkg index.js --targets win-x64 --output SendMessage.exe
+// ou npm run build
 
 const MessageManager = require("./messageManager");
 // Fix para axios em executáveis
