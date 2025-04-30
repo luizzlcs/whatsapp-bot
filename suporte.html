@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📱 Send Message to WhatsApp - Manual </title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #075e54;
+        }
+
+        h1 {
+            border-bottom: 2px solid #075e54;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            margin-top: 30px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        h3 {
+            margin-top: 20px;
+        }
+
+        code,
+        pre {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+
+        pre {
+            padding: 10px;
+            overflow-x: auto;
+        }
+
+        blockquote {
+            border-left: 4px solid #075e54;
+            padding-left: 15px;
+            margin-left: 0;
+            color: #555;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+
+        .highlight {
+            background-color: #fffde7;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+
+        .warning {
+            background-color: #fff3e0;
+            padding: 10px;
+            border-left: 4px solid #ff9800;
+            margin: 15px 0;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4caf50;
+            margin: 15px 0;
+        }
+
+        .info {
+            background-color: #e3f2fd;
+            padding: 10px;
+            border-left: 4px solid #2196f3;
+            margin: 15px 0;
+        }
+
+        .file-structure {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            line-height: 1.8;
+        }
+
+        .toc {
+            background-color: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .toc ul {
+            padding-left: 20px;
+            margin: 5px 0;
+        }
+
+        .toc a {
+            text-decoration: none;
+            color: #075e54;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        .file-structure {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            line-height: 1.6;
+            margin: 15px 0;
+            color: #333;
+        }
+
+        .folder,
+        .file {
+            margin-left: 15px;
+            position: relative;
+        }
+
+        .folder-contents {
+            margin-left: 20px;
+            border-left: 1px dashed #aaa;
+            padding-left: 10px;
+        }
+
+        .folder-name,
+        .file-name {
+            color: #075e54;
+            font-weight: bold;
+        }
+
+        .folder-name::before,
+        .file-name::before {
+            margin-right: 5px;
+        }
+
+        .comment {
+            color: #666;
+            font-style: italic;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 class="emoji">📱 Send Message to WhatsApp - Manual</h1>
+
+    <div class="toc">
+        <h2 id="indice">📜 Índice Lógico</h2>
+        <ul>
+            <li><a href="#introducao">🌟 Introdução</a></li>
+            <li><a href="#primeiros-passos">🚀 Primeiros Passos</a>
+                <ul>
+                    <li><a href="#executando-sendmessage">1. Executando o Send Message</a></li>
+                </ul>
+            </li>
+            <li><a href="#validacao-licenca">🔐 Validação da Licença</a></li>
+            <li><a href="#conexao-whatsapp">📱 Conexão com WhatsApp</a></li>
+            <li><a href="#envio-mensagens">✉️ Envio de Mensagens</a></li>
+            <li><a href="#estrutura-pastas">📂 Estrutura de Pastas</a></li>
+            <li><a href="#personalizacao">⚙️ Personalização</a>
+                <ul>
+                    <li><a href="#arquivo-numeros">Arquivo de Contatos</a></li>
+                    <li><a href="#arquivo-mensagem">Arquivo de Mensagem</a></li>
+                </ul>
+            </li>
+            <li><a href="#boas-praticas">⚠️ Boas Práticas</a></li>
+            <li><a href="#suporte">❓ Suporte</a></li>
+        </ul>
+    </div>
+
+    <h2 id="introducao" class="emoji">🌟 Introdução</h2>
+
+    <h3>🤖 O Que é o Send Message to WhatsApp?</h3>
+    <p>Um sistema inteligente que permite:</p>
+    <ul>
+        <li>✅ Enviar <strong>mensagens padronizadas</strong> para múltiplos contatos</li>
+        <li>⏱ Economizar <strong>até 95% do tempo</strong> comparado ao envio manual</li>
+        <li>📊 Gerar <strong>relatórios completos</strong> de entregas e falhas</li>
+    </ul>
+
+    <h3>📦 O Que Você Recebeu?</h3>
+    <ul>
+        <li>SendMessage.exe</li>
+        <li>Salve o aplicativo em uma pasta de fácil acesso (ex.: <code>SendMessage</code>).</li>
+    </ul>
+
+    <h3>🔍 Pré-requisitos</h3>
+    <ul>
+        <li>Computador com <strong>Windows 10/11</strong></li>
+        <li>Navegador <strong>Google Chrome</strong> instalado</li>
+        <li>Conta no <strong>WhatsApp Business</strong> ou regular</li>
+        <li>Licença ativa (fornecida por email)</li>
+    </ul>
+
+    <h2 id="primeiros-passos" class="emoji">🚀 Primeiros Passos</h2>
+
+    <h3 id="executando-sendmessage">1. Executando o Send Message</h3>
+    <ol>
+        <li>Dê <strong>duplo clique</strong> no arquivo <code>SendMessage.exe</code></li>
+        <li>Aguarde a janela do Prompt de Comando abrir<br>
+            <em>Exemplo de tela inicial:</em>
+            <pre>🕒 30/04/2025 12:50:19 | Iniciando verificação
+✔ Verificação concluída!
+📧 Digite o email cadastrado na sua licença:</pre>
+        </li>
+    </ol>
+
+    <h2 id="validacao-licenca" class="emoji">🔐 Validação da Licença</h2>
+    <p>O sistema solicitará:</p>
+    <pre>📧 Digite o email cadastrado na sua licença:</pre>
+    <p>Informe seu e-mail (ex.: exemplo-email@gmail.com)<br>
+        Pressione <strong>ENTER</strong></p>
+
+    <div class="success">
+        <p>✅ O que acontece?</p>
+        <ul>
+            <li>Verifica sua licença e exibe os detalhes:</li>
+        </ul>
+        <pre>✅ Licença válida! Detalhes:
+👤 Nome: Seu Nome
+📧 Email: seunome@empresa.com
+📅 Expiração: 31/12/2025
+💻 Dispositivos: 1/3 ativos</pre>
+        <p><strong>"Dispositivos ativos"</strong> mostra quantas máquinas podem usar o Send Message simultaneamente
+            (ex.: 1/3 = já está em 1 dispositivo e pode usar em mais 2).</p>
+    </div>
+
+    <h2 id="conexao-whatsapp" class="emoji">📱 Conexão com WhatsApp</h2>
+
+    <h3>Passo a Passo:</h3>
+    <ol>
+        <li>O Chrome abrirá automaticamente no WhatsApp Web<br>
+            ❌ <strong>Não scanear o QRCode nesta página!</strong></li>
+        <li>No Prompt de Comando observe a mensagem:
+            <pre>🔎 QR Code recebido - Escaneie para autenticar
+📷 QR Code salvo em: E:\SendMessage\temp\qrcode.png</pre>
+            Uma imagem do QRCode será aberta no visualizador de imagem padrão do Windows. Escaneie este QRCode pelo seu
+            WhatsApp móvel (Menu > Dispositivos conectados > Conectar dispositivo).
+        </li>
+    </ol>
+
+    <h2 id="envio-mensagens" class="emoji">✉️ Envio de Mensagens</h2>
+    <p>O Send Message começará automaticamente:</p>
+    <h3>Fluxo Automático:</h3>
+    <ol>
+        <li>O Send Message lê os contatos em <code>config/numeros.txt</code></li>
+        <li>Envia a mensagem de <code>config/mensagem.txt</code></li>
+        <li>Exibe progresso em tempo real:
+            <pre>📤 Iniciando envio para X números...
+🔄 Progresso: [██████████░░░░░░] 60%  ✅ 12 enviadas | ❌ 3 falhas</pre>
+        </li>
+    </ol>
+
+    <h4>📊 Relatório Final</h4>
+    <pre>========================
+   📋 RESUMO DO ENVIO:
+========================
+📤 Total: 12 contatos
+✅ Sucessos: 10 (83%)
+❌ Falhas: 2 (17%)
+⏱ Duração: 1min 23s
+========================</pre>
+
+    <h2 id="estrutura-pastas" class="emoji">📂 Estrutura de Pastas</h2>
+    <div class="file-structure">
+        <div class="folder">
+            <span class="folder-name">📁 SendMessage/</span>
+            <div class="folder-contents">
+                <div class="folder">
+                    <span class="folder-name">📂 .wwebjs_auth/</span>
+                    <span class="comment"># Dados de sessão (não mexa)</span>
+                </div>
+                <div class="folder">
+                    <span class="folder-name">📂 .wwebjs_cache</span>
+                    <span class="comment"># Cache da Sessão WhatsApp (não mexa)</span>
+                </div>
+                <div class="folder">
+                    <span class="folder-name">📂 config/</span>
+                    <div class="folder-contents">
+                        <div class="file">
+                            <span class="file-name">📄 numeros.txt</span>
+                            <span class="comment"># Lista de contatos</span>
+                        </div>
+                        <div class="file">
+                            <span class="file-name">📄 mensagem.txt</span>
+                            <span class="comment"># Texto da mensagem</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="folder">
+                    <span class="folder-name">📂 logs/</span>
+                    <span class="comment"># Histórico de envios</span>
+                </div>
+                <div class="folder">
+                    <span class="folder-name">📂 temp/</span>
+                    <span class="comment"># QRCode temporário</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 id="personalizacao" class="emoji">⚙️ Personalização</h2>
+
+    <h3 id="arquivo-numeros">📋 Arquivo numeros.txt</h3>
+    <ul>
+        <li>Adicione um número por linha, no formato:</li>
+        <li>Formato correto:
+            <pre>5511912345678
+5516998765432</pre>
+        </li>
+        <li>Caracteres como <code>( ), -, /, ~, @, !,</code> são ignorados.</li>
+        <li><code>(55)11-99999-9999@abc</code> → O Send Message lerá apenas <code>5511999999999</code>.</li>
+    </ul>
+
+    <h3 id="arquivo-mensagem">✍️ Arquivo mensagem.txt</h3>
+    <ul>
+        <li>Edite com sua mensagem personalizada (suporta emojis, links e quebras de linha):</li>
+        <li>Exemplo profissional:
+            <pre>Olá [NOME], tudo bem?
+
+Esta é uma mensagem automática enviada pelo Send Message.
+📅 Data: 30/04/2025
+✨ Atenciosamente,
+Equipe Pedro Barusco</pre>
+        </li>
+    </ul>
+
+    <div class="info">
+        <p>🔄 <strong>Próximos Envios</strong></p>
+        <ul>
+            <li>Após a primeira autenticação, o Send Message não pedirá QRCode novamente (sessão fica salva).</li>
+            <li>Sempre atualize os arquivos numeros.txt e mensagem.txt antes de executar.</li>
+        </ul>
+    </div>
+
+    <h2 id="boas-praticas" class="emoji">⚠️ Boas Práticas</h2>
+    <ol>
+        <li>Limpe a lista de contatos após o envio para evitar disparos acidentais.</li>
+        <li>Verifique os logs em logs/ se houver falhas.</li>
+        <li>Sempre teste com 2-3 números conhecidos</li>
+        <li>Mantenha a licença válida (renove antes do vencimento).</li>
+        <li>Limpe o arquivo <code>numeros.txt</code> após cada envio</li>
+        <li>Evite mensagens muito longas (>500 caracteres)</li>
+        <li>Nunca exceda 50-100 mensagens/hora (o WhatsApp pode flagar como SPAM).</li>
+        <li>Se precisar enviar para +200 contatos, divida em lotes (ex.: 50 por hora).</li>
+        <li>Mensagem Não Invasiva, Inclua opt-out no rodapé:
+            <strong>Se não deseja receber mensagens, responda "SAIR"</strong>.
+        </li>
+        <li>Horário Comercial: Envie apenas entre 9h-18h (evite fins de semana).</li>
+        <li>Identificação Clara, Sempre assine com:
+            <code>Atenciosamente,<br>[Sua Empresa]<br>CNPJ: XX.XXX.XXX/0001-XX</code>.</li>
+        <li>Taxa de Resposta, se +30% dos contatos não responderem em 24h, revise o conteúdo (pode estar sendo marcado
+            como SPAM).</li>
+    </ol>
+
+    <h2 id="suporte" class="emoji">❓ Suporte</h2>
+    <p>Para problemas técnicos:</p>
+    <p>📧 Email: <a href="mailto:luizzlcs@gmail.com">luizzlcs@gmail.com</a><br>
+        💬 Telegram: <a href="https://t.me/luizzlcs" target="_blank">t.me/luizzlcs</a></p>
+    <p><em>Documentação atualizada em 30/04/2025</em></p>
+</body>
+
+</html>

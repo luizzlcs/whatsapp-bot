@@ -49,6 +49,27 @@ const firebaseService = require("./firebaseService");
 const licenseManager = require("./licenseManager");
 const chalk = require("chalk");
 
+function exportSupportFile() {
+  const supportFilePath = path.join(execDir, 'suporte.html');
+  
+  try {
+    // Se já existe, não faz nada
+    if (fs.existsSync(supportFilePath)) return;
+
+    // Tenta ler diretamente do snapshot do PKG
+    const fileData = fs.readFileSync(path.join(__dirname, 'suporte.html'));
+    fs.writeFileSync(supportFilePath, fileData);
+    
+    console.log(chalk.green('✓ Arquivo suporte.html exportado com sucesso!'));
+  } catch (error) {
+    console.error(chalk.red('❌ ERRO GRAVE: Arquivo suporte.html não encontrado no pacote!'));
+    console.error(chalk.yellow('✔ Solução: Verifique se:'));
+    console.error(chalk.yellow('1. O arquivo suporte.html está na raiz do projeto'));
+    console.error(chalk.yellow('2. Está listado em "assets" no package.json'));
+    console.error(chalk.yellow('3. Você executou npm run build após adicionar o arquivo'));
+  }
+}
+
 // Configuração global do Axios
 axios.defaults.httpsAgent = new https.Agent({
   rejectUnauthorized: false,
@@ -545,6 +566,7 @@ ${
 
 // ==================== FUNÇÃO PRINCIPAL ====================
 async function main() {
+  exportSupportFile();
   const localTime = new Date();
 
   try {
