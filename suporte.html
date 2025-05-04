@@ -4,17 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2Fsend-message.png?alt=media&token=3a3b8a2c-aaa1-4abf-aae7-4f5488eaa7cd" type="image/png">
-    <title> Send Message - Doc </title>
+    <link rel="icon"
+        href="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2Fsend-message.png?alt=media&token=3a3b8a2c-aaa1-4abf-aae7-4f5488eaa7cd"
+        type="image/png">
+    <meta property="og:title" content="SendMessage | Documentação" />
+    <meta property="og:description"
+        content="Uma ferramenta inteligente criada para automatizar o envio de mensagens via WhatsApp." />
+    <meta property="og:image"
+        content="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FPreviewSendMessage.png?alt=media&token=da757340-4358-49fd-98ef-b0da8b6b2366" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sendms.netlify.app" />
+    <title>Send Message to WhatsApp - Guia Completo</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f9f9f9;
+            background-color: #14141407;
+            position: relative;
         }
 
         h1,
@@ -24,21 +34,207 @@
         }
 
         h1 {
+            text-align: center;
             border-bottom: 2px solid #075e54;
             padding-bottom: 10px;
         }
 
         h2 {
             margin-top: 30px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #ddd;
+            border-left: 4px solid #075e54;
+            padding-left: 10px;
         }
 
-        h3 {
-            margin-top: 20px;
+        .emoji {
+            font-size: 1.2em;
         }
 
-        code,
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .warning {
+            border-left: 4px solid #FF9800;
+            background: #FFF3E0;
+            padding: 10px;
+            margin: 15px 0;
+        }
+
+        .tip {
+            border-left: 4px solid #4CAF50;
+            background: #E8F5E9;
+            padding: 10px;
+            margin: 15px 0;
+        }
+
+        .tip-two {
+            border-left: 4px solid #1984cc;
+            background: #deebf3;
+            padding: 10px;
+            margin: 15px 0;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 20px;
+        }
+
+        .step:before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #075e54;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+        }
+
+        /* Sidebar styles */
+        .hamburger {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            cursor: pointer;
+            font-size: 28px;
+            background: #075e54;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background: white;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            transition: left 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .sidebar h3 {
+            margin-top: 0;
+        }
+
+        .sidebar a {
+            display: block;
+            margin: 10px 0;
+            color: #075e54;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        .image-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .responsive-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: contain;
+        }
+
+        .file-structure {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            line-height: 1.8;
+        }
+
+        .folder,
+        .folder-name,
+        .folder-contents {
+            margin-left: 20px;
+            border-left: 1px dashed #aaa;
+            padding-left: 10px;
+        }
+
+        .comment {
+            color: #666;
+            font-style: italic;
+            margin-left: 10px;
+        }
+
+        .file-name::before {
+            margin-right: 5px;
+        }
+
+        .folder-contents {
+            margin-left: 20px;
+            border-left: 1px dashed #aaa;
+            padding-left: 10px;
+        }
+
+        .file {
+            margin-left: 15px;
+            position: relative;
+        }
+
+        .success {
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4caf50;
+            margin: 15px 0;
+        }
+
         pre {
             background-color: #f0f0f0;
             padding: 2px 5px;
@@ -51,234 +247,374 @@
             overflow-x: auto;
         }
 
-        blockquote {
-            border-left: 4px solid #075e54;
-            padding-left: 15px;
-            margin-left: 0;
-            color: #555;
-        }
-
-        .emoji {
-            font-size: 1.2em;
-        }
-
-        .highlight {
-            background-color: #fffde7;
+        pre {
+            background-color: #f0f0f0;
             padding: 2px 5px;
             border-radius: 3px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
         }
 
-        .warning {
-            background-color: #fff3e0;
-            padding: 10px;
-            border-left: 4px solid #ff9800;
-            margin: 15px 0;
+        .phone-format-section {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
-        .success {
-            background-color: #e8f5e9;
-            padding: 10px;
-            border-left: 4px solid #4caf50;
-            margin: 15px 0;
-        }
-
-        .info {
-            background-color: #e3f2fd;
-            padding: 10px;
-            border-left: 4px solid #2196f3;
-            margin: 15px 0;
-        }
-        .info-alert {
-            background-color: #f8e5e3;
-            padding: 10px;
-            border-left: 4px solid #a70808;
-            margin: 15px 0;
-        }
-
-        .file-structure {
-            background-color: #f5f5f5;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            line-height: 1.8;
-        }
-
-        .toc {
-            background-color: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-
-        .toc ul {
-            padding-left: 20px;
-            margin: 5px 0;
-        }
-
-        .toc a {
-            text-decoration: none;
+        .phone-format-section h2 {
             color: #075e54;
+            border-bottom: 2px solid #075e54;
+            padding-bottom: 10px;
         }
 
-        .toc a:hover {
-            text-decoration: underline;
-        }
-
-        .file-structure {
-            background-color: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            line-height: 1.6;
-            margin: 15px 0;
+        .phone-format-section h3 {
             color: #333;
+            margin-top: 25px;
         }
 
-        .folder,
-        .file {
-            margin-left: 15px;
-            position: relative;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
         }
 
-        .folder-contents {
-            margin-left: 20px;
-            border-left: 1px dashed #aaa;
-            padding-left: 10px;
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
 
-        .folder-name,
-        .file-name {
-            color: #075e54;
-            font-weight: bold;
+        th {
+            background-color: #075e54;
+            color: white;
         }
 
-        .folder-name::before,
-        .file-name::before {
-            margin-right: 5px;
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
         }
 
-        .comment {
-            color: #666;
-            font-style: italic;
-            margin-left: 10px;
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        ul {
+            margin: 5px 0 5px 20px;
+            padding-left: 15px;
+        }
+
+        .invalid-formats ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .invalid-formats li:before {
+            content: "•";
+            color: #ff4444;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        .download-button {
+            display: inline-flex;
+            align-items: center;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 16px;
+            font-family: sans-serif;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .download-button:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        .download-icon {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .center-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f4f4f4;
+            /* opcional */
         }
     </style>
 </head>
 
 <body>
-    <h1 class="emoji">📱 Send Message to WhatsApp - Documentação</h1>
+    <!-- Sidebar para Desktop e Mobile -->
+    <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <br>
+            <br>
+            <br>
+            <h3>Índice</h3>
 
-    <div class="toc">
-        <h2 id="indice">📜 Índice Lógico</h2>
-        <ul>
-            <li><a href="#introducao">🌟 Introdução</a></li>
-            <li><a href="#primeiros-passos">🚀 Primeiros Passos</a>
-                <ul>
-                    <li><a href="#executando-sendmessage">1. Executando o Send Message</a></li>
-                </ul>
-            </li>
-            <li><a href="#validacao-licenca">🔐 Validação da Licença</a></li>
-            <li><a href="#conexao-whatsapp">📱 Conexão com WhatsApp</a></li>
-            <li><a href="#envio-mensagens">✉️ Envio de Mensagens</a></li>
-            <li><a href="#estrutura-pastas">📂 Estrutura de Pastas</a></li>
-            <li><a href="#personalizacao">⚙️ Personalização</a>
-                <ul>
-                    <li><a href="#arquivo-numeros">Arquivo de Contatos</a></li>
-                    <li><a href="#arquivo-mensagem">Arquivo de Mensagem</a></li>
-                </ul>
-            </li>
-            <li><a href="#boas-praticas">⚠️ Boas Práticas</a></li>
-            <li><a href="#suporte">❓ Suporte</a></li>
-        </ul>
-    </div>
+        </div>
+        <div class="sidebar-content">
+            <a href="#introducao">📱 Introdução</a>
+            <a href="#antes">✅ Antes de Começar</a>
+            <a href="#recebeu">📦 Primeiros Passos</a>
+            <a href="#conexao">📲 Conexão com WhatsApp</a>
+            <a href="#lista">📋 Lista de Números</a>
+            <a href="#mensagem">✍️ Escrever Mensagem</a>
+            <a href="#cuidados">⚠️ Cuidados</a>
+            <a href="#problemas">🔄 Soluções</a>
+            <a href="#ajuda">📞 Ajuda</a>
+        </div>
+    </nav>
 
-    <h2 id="introducao" class="emoji">🌟 Introdução</h2>
+    <!-- Hamburger Button para Mobile -->
+    <button id="hamburger" class="hamburger" aria-label="Menu de navegação">☰</button>
 
-    <h3>🤖 O Que é o Send Message to WhatsApp?</h3>
-    <p>Uma ferramenta inteligente criada para automatizar o envio de mensagens via WhatsApp, economizando tempo e esforço no contato com seu público alvo:</p>
-    <ul>
-        <li>✅ Enviar <strong>mensagens padronizadas</strong> para múltiplos contatos</li>
-        <li>⏱ Economizar <strong>até 95% do tempo</strong> comparado ao envio manual</li>
-        <li>📊 Gerar <strong>relatórios completos</strong> de entregas e falhas</li>
-    </ul>
+    <!-- Overlay para fechar o menu no mobile -->
+    <div id="overlay" class="overlay"></div>
 
-    <h3>📦 O Que Você Recebeu?</h3>
-    <ul>
-        <li>Arquivo principal: SendMessage.exe</li>     
-        <li>Recomendação: crie uma pasta dedicada, como <code>📂C:\SendMessage</code>, e salve tudo lá.</li> 
-    </ul>
-    
+    <!-- Container principal do conteúdo -->
+    <main class="content">
+        <br>
+        <br>
+        <h1 id="inicio"><span class="emoji">🤖</span> Send Message to WhatsApp - Guia Completo</h1>
 
-    <h3>🔍 Pré-requisitos</h3>
-    <ul>
-        <li> 💻 Computador com <strong> Windows 10 ou 11</strong></li>
-        <li> 🌐 Navegador <strong>Google Chrome</strong> instalado</li>
-        <li> 📱 Conta no <strong>WhatsApp</strong> (pode ser pessoal ou Business)</li>
-        <li> 🛡 Licença ativa (fornecida por email)</li>
-    </ul>
+        <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FPreviewSendMessage.png?alt=media&token=da757340-4358-49fd-98ef-b0da8b6b2366"
+            alt="Terminal pedindo email"
+            style="max-width:100%; display: block; margin: 10px auto 0; width: 500px; height: auto;"><br>
 
-    <h2 id="primeiros-passos" class="emoji">🚀 Primeiros Passos</h2>
+            <div class="center-container">
+                <a href="https://docs.google.com/uc?export=download&id=1f67l-TgYSSiVSOJsSkaD9MKQz49ommEs" download class="download-button">
+                  <span class="download-icon">⬇️</span>
+                  Clique aqui para baixar
+                </a>
+              </div>
 
-    <h3 id="executando-sendmessage">1. Executando o Send Message</h3>
-    <ol>
-        <li>Dê <strong>duplo clique</strong> no arquivo <code>SendMessage.exe</code></li>
-        <li>Aguarde a janela do Terminal abrir<br>
-            <em>Exemplo de tela inicial:</em>
-            <pre>🕒 30/04/2025 12:50:19 | Iniciando verificação
-✔ Verificação concluída!
-📧 Digite o email cadastrado na sua licença:</pre>
-        </li>
-    </ol>
 
-    <h2 id="validacao-licenca" class="emoji">🔐 Validação da Licença</h2>
-    <p>O sistema solicitará:</p>
-    <pre>📧 Digite o email cadastrado na sua licença:</pre>
-    <p>Informe seu e-mail (ex.: exemplo-email@gmail.com)<br>
-        Pressione <strong>ENTER</strong></p>
 
-    <div class="success">
-        <p>✅ O que acontece?</p>
-        <ul>
-            <li>Verifica sua licença e exibe os detalhes:</li>
-        </ul>
-        <pre>✅ Licença válida! Detalhes:
-👤 Nome: Seu Nome
-📧 Email: seunome@empresa.com
-📅 Expiração: 31/12/2025
-💻 Dispositivos: 1/3 ativos</pre>
-        <p><strong>"Dispositivos ativos"</strong> mostra quantas máquinas podem usar o Send Message simultaneamente
-            (ex.: 1/3 = já está em 1 dispositivo e pode usar em mais 2).</p>
-    </div>
+        <section class="card" id="introducao">
+            <h2><span class="emoji">🌟</span> Introdução</h2>
+            <p>O <strong>Send Message</strong> é como um carteiro digital que envia suas mensagens pelo WhatsApp para
+                muitas pessoas automaticamente, sem você precisar enviar uma por uma!</p>
 
-    <h2 id="conexao-whatsapp" class="emoji">📱 Conexão com WhatsApp</h2>
+            <h3>Quando usar?</h3>
+            <ul>
+                <li>Para enviar "Feliz Aniversário" para todos seus amigos</li>
+                <li>Avisar clientes sobre uma promoção especial</li>
+                <li>Lembrar pacientes sobre suas consultas</li>
+                <li>Comunicar novidades para sua comunidade</li>
+            </ul>
+        </section>
 
-    <h3>Passo a Passo:</h3>
-    <ol>
-        <li>O Google Chrome será aberto automaticamente na página do WhatsApp Web.<br>
-            ❌ <strong>Não scanear o QRCode nesta página!</strong></li>
-        <li>Observe no terminal a seguinte instrução:
-            <pre>🔎 QR Code recebido - Escaneie para autenticar
+        <section class="card" id="antes">
+            <h2><span class="emoji">✅</span> Antes de Começar</h2>
+            <p>Verifique se você tem tudo isso pronto:</p>
+
+            <div class="steps">
+                <div class="step">
+                    <strong>Computador com Windows</strong> (pode ser Windows 10 ou 11)
+                </div>
+
+                <div class="step">
+                    <strong>Google Chrome instalado</strong> (aquele navegador colorido)
+                </div>
+
+                <div class="step">
+                    <strong>Sua conta do WhatsApp</strong> (pode ser sua conta normal do celular)
+                </div>
+
+                <div class="step">
+                    <strong>Licença do Send Message</strong> (que você recebeu por email quando fez a aquisição da
+                    licença)
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="recebeu">
+            <h2><span class="emoji">📦</span> Primeiros passos</h2>
+            <div class="steps">
+                <div class="step">
+                    Arquivo principal: SendMessage.exe
+                </div>
+                <div class="step">
+                    Recomendação: crie uma pasta dedicada, como 📂C:\SendMessage, e salve tudo lá, ou em qualquer outro
+                    diretório de sua preferência.
+                </div>
+                <div class="step">
+                    <strong>Clique duas vezes</strong> no arquivo <code>SendMessage.exe</code><br>
+                    <code>(Se aparecer um aviso, clique em <strong>"Mais informações"</strong> e depois <strong>"Executar mesmo assim"</strong>)</code><br><br>
+                    Executou o Send Message? Pronto! Ele já cria sozinho as pastinhas necessárias na mesma pasta onde
+                    você colocou o programa:<br>
+                    <h3 id="estrutura-pastas" class="emoji">📂 Estrutura de Pastas</h3>
+                    <div class="file-structure">
+                        <div class="folder">
+                            <span class="folder-name">📁 SendMessage/</span>
+                            <div class="folder-contents">
+                                <div class="folder">
+                                    <span class="folder-name">📂 .wwebjs_auth/</span>
+                                    <span class="comment">> Dados de sessão (não mexa)</span>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-name">📂 .wwebjs_cache</span>
+                                    <span class="comment">> Cache da Sessão WhatsApp (não mexa)</span>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-name">📂 config/</span>
+                                    <div class="folder-contents">
+                                        <div class="file">
+                                            <span class="file-name">📄 numeros.txt</span>
+                                            <span class="comment">> Lista de contatos</span>
+                                        </div>
+                                        <div class="file">
+                                            <span class="file-name">📄 mensagem.txt</span>
+                                            <span class="comment">> Texto da mensagem</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-name">📂 logs/</span>
+                                    <span class="comment">> Histórico de envios</span>
+                                    <div class="folder-contents">
+                                        <div class="file">
+                                            <span class="file-name">📄 session_01-05-2025_07-56-08.log</span>
+                                            <span class="comment">> Histórico da sessão</span>
+                                        </div>
+                                        <div class="file">
+                                            <span class="file-name">📄 session_30-04-2025_18-05-28.log</span>
+                                            <span class="comment">> Histórico da sessão</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="folder">
+                                    <span class="folder-name">📂 temp/</span>
+                                    <span class="comment">> QRCode temporário</span>
+                                </div>
+                                <div>
+                                    <span class="folder">
+                                        <span class="file-name">🌐 suporte.html</span>
+                                        <span class="comment">> Documentação</span>
+                                </div>
+                                <div>
+                                    <span class="folder">
+                                        <span class="file-name">💻 SendMessage.exe</span>
+                                        <span class="comment">> Play para envio das mensagens</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="step">
+                    <strong>Digite seu email</strong> quando o programa pedir<br>
+                    <div class="image-container">
+                        <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2Fautenticando_lecenca.png?alt=media&token=6c1f44b6-de14-4e7b-9ff1-0f8529daa975"
+                            alt="Terminal pedindo email" class="responsive-image">
+                    </div>
+                    <br>Informe seu e-mail (ex.: exemplo-email@gmail.com)
+                    <br>Pressione ENTER
+
+                    <div class="success">
+                        <p>✅ O que acontece?</p>
+                        <ul>
+                            <li>Verifica sua licença e exibe os detalhes:</li>
+                        </ul>
+                        <pre>✅ Licença válida! Detalhes:
+            👤 Nome: Seu Nome
+            📧 Email: seunome@empresa.com
+            📅 Expiração: 31/12/2025
+            💻 Dispositivos: 1/3 ativos</pre>
+                        <p><strong>"Dispositivos ativos"</strong> mostra quantas máquinas podem usar o Send Message
+                            simultaneamente (ex.: 1/3 = já está em 1 dispositivo e pode usar em mais 2).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="conexao">
+            <h2><span class="emoji">📱</span> Conexão com WhatsApp</h2>
+            <div class="steps">
+                <div class="step">
+                    <h3>WhatsApp Web:</h3>
+                    <ol>
+                        <li>O Google Chrome será aberto automaticamente na página do WhatsApp Web.<br>
+                            <div class="image-container">
+                                <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FWhatApp_web_scaner.png?alt=media&token=c1597e4d-311d-4b18-8045-066a4f3c7868"
+                                    alt="WhatsApp Web Scanner" class="responsive-image">
+                            </div>
+                            <br>
+                            ❌ <strong>Não scanear o QRCode nesta página!</strong>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h3>QR Code gerado pelo SendMessage:</h3>
+                    <ol>
+                        <li>Observe no terminal a seguinte instrução:
+                            <pre>🔎 QR Code recebido - Escaneie para autenticar
 📷 QR Code salvo em: 📂E:\SendMessage\temp\qrcode.png</pre>
-            
-        </li>
-        <li>A imagem do QR será aberta no visualizador de imagens do Windows.
-            📱 Escaneie com o WhatsApp no celular (Menu > Dispositivos conectados > Conectar dispositivo)</li>
-    </ol>
+                        </li>
+                        <li>A imagem do QR Code será aberta no visualizador de imagens do Windows.<br>
+                            <div class="image-container">
+                                <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FQR_code_SendMessage.png?alt=media&token=e49c033f-8dad-4b52-859d-fa79ac634ba7"
+                                    alt="QR Code SendMessage" class="responsive-image">
+                            </div>
+                            <br>
+                            ✅ Use seu WhatsApp para escanear este código e ativar o SendMessage!<br><br>
+                            1. Abra o WhatsApp no seu celular<br>
+                            2. Toque nos <strong>três pontinhos</strong> no canto superior direito<br>
+                            3. Escolha <strong>Dispositivos conectados</strong><br>
+                            4. Toque em <strong>Conectar dispositivo</strong><br>
+                            5. Aponte a câmera para o QR Code na tela do computador<br>
+                        </li>
+                    </ol>
 
-    <h2 id="envio-mensagens" class="emoji">✉️ Envio de Mensagens</h2>
-    <p>Assim que a conexão for estabelecida, o envio começará automaticamente:</p>
-    <h3>Fluxo Automático:</h3>
-    <ol>
-        <li>O Send Message lê os contatos em <code>config/numeros.txt</code></li>
-        <li>Envia a mensagem de <code>config/mensagem.txt</code></li>
-        <li>Exibe progresso em tempo real:
-            <pre>📤 Iniciando envio para 14 números...
+                    <h3 id="carregamento" class="emoji">⏳ Carregamento... </h3>
+
+                    <p>Aguarde o carregamento das menssagens no WhatsApp Web</p>
+                    <div class="image-container">
+                        <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FWhats_app_Web_carregando.png?alt=media&token=db175267-c41f-4e54-bc3a-818f41217c4c"
+                            alt="WhatsApp Web carregando" class="responsive-image">
+                    </div>
+
+                    <h3 id="envio-mensagens" class="emoji">✉️ Envio de Mensagens</h3>
+                    <p>📤 Conexão estabelecida! O envio começará automaticamente.</p>
+
+                    <p>Como esta é a primeira vez que você está executando o SendMessage, ele fará um envio simulado
+                        para contatos fictícios.</p>
+
+                    <p>📁 Na pasta config, serão criados dois arquivos de exemplo:</p>
+
+                    <p>numeros.txt → lista de contatos<br>
+                        mensagem.txt → mensagem padrão</p>
+
+                    <p>Na próxima vez que for usar o SendMessage, basta editar esses arquivos com os contatos reais e a
+                        mensagem que deseja enviar.</p>
+
+                    <h3>Fluxo Automático:</h3>
+                    <ol>
+                        <li>O Send Message lê os contatos em <code>config/numeros.txt</code></li>
+                        <li>Envia a mensagem de <code>config/mensagem.txt</code></li>
+                        <li>Exibe progresso em tempo real:
+                            <pre>📤 Iniciando envio para 14 números...
 🔄 Progresso: [██████████░░░░░░] 60%  ✅ 10 enviadas | ❌ 4 falhas | ⏱️ 42s / ~0s</pre>
-        </li>
-    </ol>
+                        </li>
+                    </ol>
 
-    <h4>📊 Relatório Final</h4>
-    <pre>========================
+                    <h4>📊 Relatório Final</h4>
+                    <pre>========================
    📋 RESUMO DO ENVIO:
 ========================
 📤 Total de números processados: 14 
@@ -287,7 +623,7 @@
 ⏱ Duração: 42s
 ========================</pre>
 
-<pre>==========================
+                    <pre>==========================
   ⚠️ NÚMEROS COM FALHAS:
 ==========================
  5511999999999
@@ -297,124 +633,274 @@
  
 ==========================</pre>
 
-    <h2 id="estrutura-pastas" class="emoji">📂 Estrutura de Pastas</h2>
-    <div class="file-structure">
-        <div class="folder">
-            <span class="folder-name">📁 SendMessage/</span>
-            <div class="folder-contents">
-                <div class="folder">
-                    <span class="folder-name">📂 .wwebjs_auth/</span>
-                    <span class="comment">> Dados de sessão (não mexa)</span>
-                </div>
-                <div class="folder">
-                    <span class="folder-name">📂 .wwebjs_cache</span>
-                    <span class="comment">> Cache da Sessão WhatsApp (não mexa)</span>
-                </div>
-                <div class="folder">
-                    <span class="folder-name">📂 config/</span>
-                    <div class="folder-contents">
-                        <div class="file">
-                            <span class="file-name">📄 numeros.txt</span>
-                            <span class="comment">> Lista de contatos</span>
-                        </div>
-                        <div class="file">
-                            <span class="file-name">📄 mensagem.txt</span>
-                            <span class="comment">> Texto da mensagem</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="folder">
-                    <span class="folder-name">📂 logs/</span>
-                    <span class="comment">> Histórico de envios</span>
-                    <div class="folder-contents">
-                        <div class="file">
-                            <span class="file-name">📄 session_01-05-2025_07-56-08.log</span>
-                            <span class="comment">> Histórico da sessão</span>
-                        </div>
-                        <div class="file">
-                            <span class="file-name">📄 session_30-04-2025_18-05-28.log</span>
-                            <span class="comment">> Histórico da sessão</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="folder">
-                    <span class="folder-name">📂 temp/</span>
-                    <span class="comment">> QRCode temporário</span>
-                </div>
-                <div>
-                    <span class="folder">
-                        <span class="file-name">🌐 suporte.html</span>
-                        <span class="comment">> Documentação</span>
+                    <h3 id="pasta-logs" class="emoji">📁 Pasta logs </h3>
+                    <p>A pasta logs armazena todos os registros das execuções do SendMessage. Nela, você encontrará:</p>
+
+                    <ul>
+                        <li>Relatórios de envio<br>
+                            Arquivos com o resumo de cada sessão de envio, nomeados com a data e hora de execução.<br>
+                            Exemplo: 📄 session_02-05-2025_15-40-25.log
+                        </li>
+                        <li>Relatórios de erros<br>
+                            Arquivos que registram eventuais falhas ocorridas durante o processo de envio.<br>
+                            Exemplo: 📄 error_02-05-2025_15-08-22.txt
+                        </li>
+                    </ul>
+
+                    <p>Esses arquivos são úteis para auditoria, depuração e acompanhamento do desempenho das suas
+                        campanhas de mensagens.</p>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
 
-    <h2 id="personalizacao" class="emoji">⚙️ Personalização</h2>
+        <section class="card" id="lista">
+            <h2><span class="emoji">📞</span> Preparando Sua Lista de Números</h2>
+            <div class="phone-format-section">
+                <p>O Send Message aceita números em vários formatos, mas só entrega corretamente com DDD. Veja como
+                    funciona:</p>
 
-    <h3 id="arquivo-numeros">📋 Arquivo numeros.txt</h3>
-    <ul>
-        <li>Adicione um número por linha, no formato:</li>
-        <li>Formato correto:
-            <pre>5511912345678
-5516998765432</pre>
-        </li>
-        <li>Caracteres como <code>( ), -, /, ~, @, !,</code> são ignorados.</li>
-        <li><code>(55)11-99999-9999@abc</code> → O Send Message lerá apenas <code>5511999999999</code>.</li>
-    </ul>
+                <div class="valid-formats">
+                    <h3>✅ Formatos Válidos (funcionam)</h3>
 
-    <h3 id="arquivo-mensagem">✍️ Arquivo mensagem.txt</h3>
-    <ul>
-        <li>Edite com sua mensagem personalizada (suporta emojis, links e quebras de linha):</li>
-        <li>Exemplo profissional:
-            <pre>Olá, tudo bem?
+                    <div class="steps">
+                        <div class="tip-two">
+                            <div class="step">
+                                <strong>Internacional</strong> (Código do país é obrigatório)<br>
+                                <strong>Exemplo:</strong> +232 75 966776<br>
+                                <b>Observação:</b> Código do país (Serra Leoa: <code>232</code>) + prefixo
+                                (<code>75</code>) + número.
+                                </step>
+                            </div>
 
-Esta é uma mensagem automática enviada pelo Send Message.
-📅 Data: 30/04/2025
-✨ Atenciosamente,
-Equipe de Suporte</pre>
-        </li>
-    </ul>
+                        </div>
+                        <div class="tip-two">
+                            <div class="step">
+                                <b>Brasil</b> (formato completo - ideal)<br>
+                                <strong>Exemplo:</strong> 5511987654321<br>
+                                <strong>Observação:</strong> Código do Brasil (<code>55</code>) + DDD (<code>11</code>)
+                                +
+                                número.
+                                </step>
+                            </div>
 
-    <div class="info">
-        <p>🔄 <strong>Próximos Envios</strong></p>
-        <ul>
-            <li>Após a primeira autenticação, o Send Message não pedirá QRCode novamente (sessão fica salva).</li>
-            <li>Sempre atualize os arquivos numeros.txt e mensagem.txt antes de executar.</li>
-        </ul>
-    </div>
-    <div class="info-alert">
-        <p> ⚪<strong> Arquivo de contatos</strong></p>
-        <ul>
-            <li>Limpe o arquivo <code>numeros.txt</code> após cada envio</li>
-            <li>Isso ajuda a evitar o envio acidental de mensagens caso o SendMessage seja executado.</li>
-        </ul>
-    </div>
+                        </div>
+                        <div class="tip-two">
+                            <div class="step">
+                                <b>Só com DDD</b>, tabém pode ser assim<br>
+                                <b>Exemplo:</b> 11987654321<br>
+                                <b>Observação:</b> O programa adiciona automaticamente o código do país
+                                (<code>55</code>).
+                                </step>
+                            </div>
 
-    <h2 id="boas-praticas" class="emoji">⚠️ Boas Práticas</h2>
-    <ol>
-        <li>Limpe a lista de contatos após o envio para evitar disparos acidentais.</li>
-        <li>Verifique os logs em logs/ se houver falhas.</li>
-        <li>Sempre teste com 2-3 números conhecidos</li>
-        <li>Mantenha a licença válida (renove antes do vencimento).</li>
-        
-        <li>Evite mensagens muito longas (>500 caracteres)</li>
-        <li>Nunca exceda 50-100 mensagens/hora (o WhatsApp pode flagar como SPAM).</li>
-        <li>Se precisar enviar para +200 contatos, divida em lotes (ex.: 50 por hora).</li>
-        <li>Mensagem Não Invasiva, Inclua opt-out no rodapé:
-            <br><strong><code>Se não deseja receber mensagens, responda "SAIR"</code></strong>.        
-        <li>Horário Comercial: Envie apenas entre 9h-18h (evite fins de semana).</li>
-        <li>Identificação Clara, Sempre assine com:
-            <code>Atenciosamente,<br>[Sua Empresa]<br>CNPJ: XX.XXX.XXX/0001-XX</code>.</li>
-        <li>Taxa de Resposta, se +30% dos contatos não responderem em 24h, revise o conteúdo (pode estar sendo marcado
-            como SPAM).</li>
-    </ol>
+                        </div>
 
-    <h2 id="suporte" class="emoji">❓ Suporte</h2>
-    <p>Para problemas técnicos:</p>
-    <p>📧 Email: <a href="mailto:luizzlcs@gmail.com">luizzlcs@gmail.com</a><br>
-        💬 Telegram: <a href="https://t.me/luizzlcs" target="_blank">t.me/luizzlcs</a></p>
-    <p><em>Documentação atualizada em 01/05/2025</em></p>
+                    </div>
+
+                    <div class="invalid-formats">
+                        <h3>⚠️ Formatos que PODEM FALHAR</h3>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Formato</th>
+                                        <th>Risco</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>987654321</code> (sem DDD)</td>
+                                        <td>
+                                            ❌ <strong>90% de falha</strong> – Pode:
+                                            <ul>
+                                                <li>Não entregar</li>
+                                                <li>Enviar para número errado em outro estado</li>
+                                            </ul>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>55987654321</code> (sem DDD)</td>
+                                        <td>❌ <strong>Mesmo problema</strong> – O DDD é essencial!</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tip">
+                    <strong>Dica 1:</strong> Caracteres como ( ), -, /, ~, @, !, são ignorados.
+                    (55)11-99999-9999@abc → O Send Message lerá apenas 5511999999999.
+                </div>
+
+                <div class="tip">
+                    <strong>Dica 2:</strong> Sempre teste primeiro com seu próprio número para ver se está funcionando!
+                </div>
+        </section>
+
+        <section class="card" id="mensagem">
+            <h2><span class="emoji">✍️</span> Escrevendo Sua Mensagem</h2>
+            <p>Edite o arquivo <code>mensagem.txt</code> com o texto que deseja enviar. Veja um exemplo completo:</p>
+
+            <pre>Olá tudo bem?
+
+Somos da [Sua Loja] e temos uma novidade para você!
+
+📢 Promoção especial esta semana:
+10% de desconto em toda loja!
+
+🛍️ Venha conferir:
+https://sualoja.com.br/promocao
+
+Atenciosamente,
+Equipe [Sua Loja]
+CNPJ: 12.000.00/0001-00
+
+Para não receber mais mensagens, responda <b>SAIR</b>.</pre>
+
+            <h3>Dicas de Ouro para Boas Mensagens:</h3>
+            <ol>
+                <li><strong>Sempre comece com um cumprimento</strong> (Olá, Bom dia, etc.)</li>
+                <li><strong>Seja breve</strong> - 3 a 4 linhas no máximo</li>
+                <li><strong>Identifique-se</strong> - Inclua seu nome ou nome da empresa</li>
+                <li><strong>Links com cuidado</strong> - Só inclua se for realmente necessário</li>
+                <li><strong>Ofereça opção de saída</strong> - "responda SAIR para não receber mais"</li>
+                <li><strong>Emojis com moderação</strong> - 2 ou 3 por mensagem são suficientes</li>
+            </ol>
+
+            <div class="warning">
+                <strong>Não faça isso:</strong> Mensagens muito longas, várias mensagens seguidas para a mesma pessoa,
+                ou mensagens com muitos links podem fazer o WhatsApp bloquear seu número!
+            </div>
+        </section>
+
+        <section class="card" id="cuidados">
+            <h2><span class="emoji">⚠️</span> Cuidados Importantes</h2>
+            <div class="precautions">
+                <div class="precaution-group">
+                    <h3>NUNCA faça isso:</h3>
+                    <ul>
+                        <li>❌ Enviar para números que não te conhecem</li>
+                        <li>❌ Mandar muitas mensagens seguidas (mais de 50 por hora)</li>
+                        <li>❌ Esquecer de limpar a lista depois de usar</li>
+                        <li>❌ Enviar mensagens fora do horário comercial (9h-18h)</li>
+                    </ul>
+                </div>
+
+                <div class="precaution-group">
+                    <h3>SEMPRE faça isso:</h3>
+                    <ul>
+                        <li>✅ Teste primeiro com seu próprio número</li>
+                        <li>✅ Mantenha uma cópia das mensagens enviadas</li>
+                        <li>✅ Verifique os logs em <code>logs/</code> se houver falhas</li>
+                        <li>✅ Limpe o arquivo numeros.txt após cada envio, Isso ajuda a evitar o envio acidental de
+                            mensagens caso o SendMessage seja executado.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section class="card" id="problemas">
+            <h2><span class="emoji">🔄</span> Se Der Problema...</h2>
+
+            <div class="problem-solution">
+                <h3>Problema: Não aparece o QR Code</h3>
+                <p><strong>Solução:</strong></p>
+                <ol>
+                    <li>Feche o Send Message</li>
+                    <li>Apague a pasta <code>.wwebjs_auth</code></li>
+                    <li>Execute o programa novamente</li>
+                </ol>
+            </div>
+
+            <div class="problem-solution">
+                <h3>Problema: Mensagens não estão chegando</h3>
+                <p><strong>Solução:</strong></p>
+                <ol>
+                    <li>Verifique se os números estão corretos</li>
+                    <li>Confira se sua mensagem não tem links suspeitos</li>
+                    <li>Espere 5 minutos e tente com menos números</li>
+                </ol>
+            </div>
+
+            <div class="problem-solution">
+                <h3>Problema: Aparece "Licença inválida"</h3>
+                <p><strong>Solução:</strong></p>
+                <ol>
+                    <li>Verifique se digitou o email corretamente</li>
+                    <li>Confira se sua licença não expirou</li>
+                    <li>Entre em contato com o suporte</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="card" id="ajuda">
+            <h2><span class="emoji">📞</span> Precisa de Ajuda?</h2>
+
+            <div class="support-info">
+                <p>Nosso time está pronto para te ajudar!</p>
+
+                <p><strong>📧 Email:</strong> luizzlcs@gmail.com<br>
+                    <strong>💬 Telegram:</strong> <a href="https://t.me/luizzlcs">t.me/luizzlcs</a>
+                </p>
+
+                <p>Quando entrar em contato, informe:</p>
+                <ul>
+                    <li>Seu nome</li>
+                    <li>Seu e-mail de licença</li>
+                    <li>O problema que está tendo</li>
+                    <li>Print da tela (se possível)</li>
+
+                </ul>
+            </div>
+        </section>
+    </main>
+
+    <footer style="text-align: center;color: gray;">
+        Documentação atualizada em 04/05/2025<br>
+        Send Message to WhatsApp © 2025
+    </footer>
+
+    <script>
+        // Manipulação do menu
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburger = document.getElementById('hamburger');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const closeSidebar = document.getElementById('close-sidebar');
+            const menuLinks = document.querySelectorAll('#sidebar a');
+
+            // Função para abrir/fechar o menu
+            function toggleSidebar() {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('show');
+                document.body.classList.toggle('no-scroll');
+            }
+
+            // Event listeners
+            hamburger.addEventListener('click', toggleSidebar);
+            overlay.addEventListener('click', toggleSidebar);
+            closeSidebar.addEventListener('click', toggleSidebar);
+
+            // Fechar o menu ao clicar em links (no mobile)
+            menuLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    if (window.innerWidth < 768) {
+                        toggleSidebar();
+                    }
+                });
+            });
+
+            // Ajustar o menu quando a janela for redimensionada
+            window.addEventListener('resize', function () {
+                if (window.innerWidth >= 768) {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('show');
+                    document.body.classList.remove('no-scroll');
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>
