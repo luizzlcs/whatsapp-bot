@@ -395,14 +395,13 @@
             alt="Terminal pedindo email"
             style="max-width:100%; display: block; margin: 10px auto 0; width: 500px; height: auto;"><br>
 
-            <div class="center-container">
-                <a href="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FSendMessage.rar?alt=media&token=d844c002-ab99-431c-8908-e7c789030679" download class="download-button">
-                  <span class="download-icon">⬇️</span>
-                  Clique aqui para baixar
-                </a>
-              </div>
-
-
+        <div class="center-container">
+            <a href="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FSendMessage.rar?alt=media&token=d844c002-ab99-431c-8908-e7c789030679"
+                download class="download-button">
+                <span class="download-icon">⬇️</span>
+                Clique aqui para baixar
+            </a>
+        </div>
 
         <section class="card" id="introducao">
             <h2><span class="emoji">🌟</span> Introdução</h2>
@@ -522,6 +521,7 @@
                         <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2Fautenticando_lecenca.png?alt=media&token=6c1f44b6-de14-4e7b-9ff1-0f8529daa975"
                             alt="Terminal pedindo email" class="responsive-image">
                     </div>
+
                     <br>Informe seu e-mail (ex.: exemplo-email@gmail.com)
                     <br>Pressione ENTER
 
@@ -530,15 +530,18 @@
                         <ul>
                             <li>Verifica sua licença e exibe os detalhes:</li>
                         </ul>
-                        <pre>✅ Licença válida! Detalhes:
-            👤 Nome: Seu Nome
-            📧 Email: seunome@empresa.com
-            📅 Expiração: 31/12/2025
-            💻 Dispositivos: 1/3 ativos</pre>
+                    </div>
+                    <div class="image-container">
+                        <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FIciandoSendMessage.png?alt=media&token=109621ef-a50c-4b58-b1db-cf4b99524a46"
+                            alt="Terminal pedindo email" class="responsive-image">
+                    </div>
+                    <div class="warning">
                         <p><strong>"Dispositivos ativos"</strong> mostra quantas máquinas podem usar o Send Message
                             simultaneamente (ex.: 1/3 = já está em 1 dispositivo e pode usar em mais 2).</p>
                     </div>
+
                 </div>
+            </div>
             </div>
         </section>
 
@@ -608,8 +611,11 @@
                         <li>O Send Message lê os contatos em <code>config/numeros.txt</code></li>
                         <li>Envia a mensagem de <code>config/mensagem.txt</code></li>
                         <li>Exibe progresso em tempo real:
-                            <pre>📤 Iniciando envio para 14 números...
-🔄 Progresso: [██████████░░░░░░] 60%  ✅ 10 enviadas | ❌ 4 falhas | ⏱️ 42s / ~0s</pre>
+                            <div class="image-container">
+                                <img src="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FsendMassage%2FprocessandoContatos.png?alt=media&token=d0c56b5e-55fe-4c53-b700-91d23b26f807"
+                                    alt="WhatsApp Web carregando" class="responsive-image">
+                            </div>
+
                         </li>
                     </ol>
 
@@ -850,7 +856,6 @@ Para não receber mais mensagens, responda <b>SAIR</b>.</pre>
                     <li>Seu e-mail de licença</li>
                     <li>O problema que está tendo</li>
                     <li>Print da tela (se possível)</li>
-
                 </ul>
             </div>
         </section>
