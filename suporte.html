@@ -8,13 +8,13 @@
         href="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2Fsend-message.png?alt=media&token=3a3b8a2c-aaa1-4abf-aae7-4f5488eaa7cd"
         type="image/png">
     <meta property="og:title" content="SendMessage | Documentação" />
-    <meta property="og:description"
-        content="Uma ferramenta inteligente criada para automatizar o envio de mensagens via WhatsApp." />
+    <meta name="description" content="Uma ferramenta inteligente criada para automatizar o envio de mensagens via WhatsApp. Envie mensagens em massa com apenas alguns cliques e recupere horas do seu dia.">
     <meta property="og:image"
         content="https://firebasestorage.googleapis.com/v0/b/seven-manager-cffc7.appspot.com/o/images%2FPreviewSendMessage.png?alt=media&token=da757340-4358-49fd-98ef-b0da8b6b2366" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://sendms.netlify.app" />
     <title>Send Message to WhatsApp - Guia Completo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -367,15 +367,15 @@
 
         </div>
         <div class="sidebar-content">
-            <a href="#introducao">📱 Introdução</a>
-            <a href="#antes">✅ Antes de Começar</a>
-            <a href="#recebeu">📦 Primeiros Passos</a>
-            <a href="#conexao">📲 Conexão com WhatsApp</a>
-            <a href="#lista">📋 Lista de Números</a>
-            <a href="#mensagem">✍️ Escrever Mensagem</a>
-            <a href="#cuidados">⚠️ Cuidados</a>
-            <a href="#problemas">🔄 Soluções</a>
-            <a href="#ajuda">📞 Ajuda</a>
+            <a href="#introducao"><i class="fa-solid fa-star"></i> Introdução</a>
+            <a href="#antes"><i class="fa-solid fa-check-to-slot"></i> Antes de Começar</a>
+            <a href="#recebeu"><i class="fa-solid fa-shoe-prints"></i> Primeiros Passos</a>
+            <a href="#conexao"><i class="fa-solid fa-qrcode"></i> Conexão com WhatsApp</a>
+            <a href="#lista"><i class="fa-solid fa-address-book"></i> Lista de Contatos</a>
+            <a href="#mensagem"><i class="fa-solid fa-keyboard"></i> Escrever Mensagem</a>
+            <a href="#cuidados"><i class="fa-solid fa-triangle-exclamation"></i> Cuidados</a>
+            <a href="#problemas"><i class="fa-solid fa-rotate"></i> Soluções</a>
+            <a href="#ajuda"><i class="fa-solid fa-phone"></i> Ajuda</a>
         </div>
     </nav>
 
@@ -546,7 +546,7 @@
         </section>
 
         <section class="card" id="conexao">
-            <h2><span class="emoji">📱</span> Conexão com WhatsApp</h2>
+            <h2><span class="emoji"><i class="fa-solid fa-qrcode"></i></span> Conexão com WhatsApp</h2>
             <div class="steps">
                 <div class="step">
                     <h3>WhatsApp Web:</h3>
@@ -660,7 +660,7 @@
         </section>
 
         <section class="card" id="lista">
-            <h2><span class="emoji">📞</span> Preparando Sua Lista de Números</h2>
+            <h2><span class="emoji"><i class="fa-solid fa-address-book"></i></span> Preparando Sua Lista de Contatos</h2>
             <div class="phone-format-section">
                 <p>O Send Message aceita números em vários formatos, mas só entrega corretamente com DDD. Veja como
                     funciona:</p>
@@ -745,7 +745,7 @@
         </section>
 
         <section class="card" id="mensagem">
-            <h2><span class="emoji">✍️</span> Escrevendo Sua Mensagem</h2>
+            <h2><span class="emoji"><i class="fa-solid fa-keyboard"></i></span> Escrevendo Sua Mensagem</h2>
             <p>Edite o arquivo <code>mensagem.txt</code> com o texto que deseja enviar. Veja um exemplo completo:</p>
 
             <pre>Olá tudo bem?
@@ -786,7 +786,8 @@ Para não receber mais mensagens, responda <b>SAIR</b>.</pre>
                 <div class="precaution-group">
                     <h3>NUNCA faça isso:</h3>
                     <ul>
-                        <li>❌ Enviar para números que não te conhecem</li>
+                        <li>❌ Iniciar conversas com pessoas que não conhecem sua empresa ou serviço.</li>
+                        <li>❌ Enviar mensagens para contatos que não autorizaram o recebimento.</li>
                         <li>❌ Mandar muitas mensagens seguidas (mais de 50 por hora)</li>
                         <li>❌ Esquecer de limpar a lista depois de usar</li>
                         <li>❌ Enviar mensagens fora do horário comercial (9h-18h)</li>
@@ -797,11 +798,17 @@ Para não receber mais mensagens, responda <b>SAIR</b>.</pre>
                     <h3>SEMPRE faça isso:</h3>
                     <ul>
                         <li>✅ Teste primeiro com seu próprio número</li>
+                        <li>✅ Prefira qualidade à quantidade nos envios: Priorize campanhas segmentadas, com mensagens relevantes para públicos específicos. O envio em massa sem critério tende a gerar bloqueios e denúncias.</li>
+                        <li>✅ Facilite a solicitação de descadastramento (Ex. Para não receber mais mensagens, <b>responda SAIR</b>).</li>
                         <li>✅ Mantenha uma cópia das mensagens enviadas</li>
                         <li>✅ Verifique os logs em <code>logs/</code> se houver falhas</li>
                         <li>✅ Limpe o arquivo numeros.txt após cada envio, Isso ajuda a evitar o envio acidental de
                             mensagens caso o SendMessage seja executado.</li>
                     </ul>
+
+                    <div class="warning">
+                        <b>Excessivos bloqueios</b> por parte dos destinatários podem levar ao banimento da conta:</b> A plataforma monitora a taxa de bloqueios. Uma frequência elevada pode sinalizar abuso de uso e resultar em sanções ou restrições.
+                    </div>
                 </div>
             </div>
         </section>
